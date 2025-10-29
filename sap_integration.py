@@ -3799,6 +3799,147 @@ class SAPIntegration:
                 'error': f'Error posting to SAP: {str(e)}'
             }
 
+    def get_serial_managed_item_warehouses(self, item_code):
+        """
+        Fetch warehouse details for Serial Managed items
+        Returns warehouses, serial numbers, and available quantities
+        """
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, cannot fetch serial managed item warehouses")
+            return {
+                'success': False,
+                'error': 'SAP B1 connection unavailable'
+            }
+        
+        try:
+            url = f"{self.base_url}/b1s/v1/SQLQueries('GetSerialManagedItemWH')/List"
+            payload = {
+                "ParamList": f"itemCode='{item_code}'"
+            }
+            
+            logging.info(f"🔍 Fetching Serial Managed Item Warehouses for: {item_code}")
+            response = self.session.post(url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                values = data.get('value', [])
+                
+                logging.info(f"✅ Found {len(values)} serial warehouse entries for {item_code}")
+                
+                return {
+                    'success': True,
+                    'item_code': item_code,
+                    'item_type': 'serial',
+                    'warehouses': values
+                }
+            else:
+                logging.error(f"❌ SAP B1 API call failed: {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': f'SAP B1 API call failed: {response.status_code}'
+                }
+                
+        except Exception as e:
+            logging.error(f"❌ Error fetching serial managed item warehouses: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Error fetching warehouses: {str(e)}'
+            }
+
+    def get_batch_managed_item_warehouses(self, item_code):
+        """
+        Fetch warehouse details for Batch Managed items
+        Returns warehouses, batch numbers, and available quantities
+        """
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, cannot fetch batch managed item warehouses")
+            return {
+                'success': False,
+                'error': 'SAP B1 connection unavailable'
+            }
+        
+        try:
+            url = f"{self.base_url}/b1s/v1/SQLQueries('GetBatchManagedItemWH')/List"
+            payload = {
+                "ParamList": f"itemCode='{item_code}'"
+            }
+            
+            logging.info(f"🔍 Fetching Batch Managed Item Warehouses for: {item_code}")
+            response = self.session.post(url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                values = data.get('value', [])
+                
+                logging.info(f"✅ Found {len(values)} batch warehouse entries for {item_code}")
+                
+                return {
+                    'success': True,
+                    'item_code': item_code,
+                    'item_type': 'batch',
+                    'warehouses': values
+                }
+            else:
+                logging.error(f"❌ SAP B1 API call failed: {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': f'SAP B1 API call failed: {response.status_code}'
+                }
+                
+        except Exception as e:
+            logging.error(f"❌ Error fetching batch managed item warehouses: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Error fetching warehouses: {str(e)}'
+            }
+
+    def get_non_managed_item_warehouses(self, item_code):
+        """
+        Fetch warehouse details for Non-Batch-Non-Serial Managed items
+        Returns warehouses and available quantities
+        """
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, cannot fetch non-managed item warehouses")
+            return {
+                'success': False,
+                'error': 'SAP B1 connection unavailable'
+            }
+        
+        try:
+            url = f"{self.base_url}/b1s/v1/SQLQueries('GetNonSerialNonBatchManagedItemWH')/List"
+            payload = {
+                "ParamList": f"itemCode='{item_code}'"
+            }
+            
+            logging.info(f"🔍 Fetching Non-Managed Item Warehouses for: {item_code}")
+            response = self.session.post(url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                values = data.get('value', [])
+                
+                logging.info(f"✅ Found {len(values)} warehouse entries for {item_code}")
+                
+                return {
+                    'success': True,
+                    'item_code': item_code,
+                    'item_type': 'non-managed',
+                    'warehouses': values
+                }
+            else:
+                logging.error(f"❌ SAP B1 API call failed: {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': f'SAP B1 API call failed: {response.status_code}'
+                }
+                
+        except Exception as e:
+            logging.error(f"❌ Error fetching non-managed item warehouses: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Error fetching warehouses: {str(e)}'
+            }
+
     def logout(self):
         """Logout from SAP B1"""
         if self.session_id:
