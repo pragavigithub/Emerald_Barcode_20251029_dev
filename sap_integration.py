@@ -2796,7 +2796,7 @@ class SAPIntegration:
                 for serial in item.serial_numbers:
                     serial_entry = {
                         "Quantity": 1.0,  # Each serial is always quantity 1
-                        "BaseLineNumber": po_line_num  # Use PO BaseLine, not document line counter
+                        "BaseLineNumber": line_number  # Use 0-indexed document line counter
                     }
                     if serial.manufacturer_serial_number:
                         serial_entry["ManufacturerSerialNumber"] = serial.manufacturer_serial_number
@@ -2830,7 +2830,7 @@ class SAPIntegration:
                     batch_entry = {
                         "BatchNumber": batch.batch_number,
                         "Quantity": batch_quantity,
-                        "BaseLineNumber": po_line_num  # Use PO BaseLine, not document line counter
+                        "BaseLineNumber": line_number  # Use 0-indexed document line counter
                     }
                     if batch.manufacturer_serial_number:
                         batch_entry["ManufacturerSerialNumber"] = batch.manufacturer_serial_number
