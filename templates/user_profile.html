@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - WMS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i data-feather="user"></i> My Profile</h1>
+            <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">
+                <i data-feather="edit"></i> Edit Profile
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Profile Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Username</h6>
+                        <p><strong>{{ user.username }}</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Email</h6>
+                        <p>{{ user.email }}</p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">First Name</h6>
+                        <p>{{ user.first_name or 'Not Set' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Last Name</h6>
+                        <p>{{ user.last_name or 'Not Set' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Role</h6>
+                        <p>
+                            {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">Administrator</span>
+                            {% elif user.role == 'manager' %}
+                                <span class="badge bg-warning">Manager</span>
+                            {% elif user.role == 'qc' %}
+                                <span class="badge bg-info">Quality Control</span>
+                            {% else %}
+                                <span class="badge bg-secondary">User</span>
+                            {% endif %}
+                        </p>
+                    </div>
+<!--                    <div class="col-md-6">-->
+<!--                        <h6 class="text-muted">Branch</h6>-->
+<!--                        <p>{{ user.branch_name or 'Not Assigned' }}</p>-->
+<!--                    </div>-->
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Status</h6>
+                        <p>
+                            {% if user.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Member Since</h6>
+                        <p>{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'Unknown' }}</p>
+                    </div>
+                </div>
+
+                {% if user.last_login %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Last Login</h6>
+                        <p>{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary">
+                        <i data-feather="edit"></i> Edit Profile
+                    </a>
+                    <a href="{{ url_for('change_password') }}" class="btn btn-outline-warning">
+                        <i data-feather="key"></i> Change Password
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i data-feather="home"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+</script>
+{% endblock %}

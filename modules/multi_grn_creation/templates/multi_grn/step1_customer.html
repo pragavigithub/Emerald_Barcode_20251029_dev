@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block head %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('multi_grn.index') }}">Multiple GRN</a></li>
+            <li class="breadcrumb-item active">Step 1: Select Customer</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-user-tie"></i> Step 1: Select Customer</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="customerForm">
+                <div class="mb-3">
+                    <label for="customerDropdown" class="form-label">Select Customer *</label>
+                    <select class="form-select" id="customerDropdown" name="customer_dropdown" required style="width: 100%;">
+                        <option value="">-- Select a Customer --</option>
+                    </select>
+                    <div id="loadingMessage" class="text-muted mt-2" style="display: none;">
+                        <span class="spinner-border spinner-border-sm me-2"></span>Loading customers...
+                    </div>
+                    <div id="errorMessage" class="text-danger mt-2" style="display: none;"></div>
+                </div>
+
+                <input type="hidden" name="customer_code" id="customer_code" required>
+                <input type="hidden" name="customer_name" id="customer_name" required>
+
+                <div id="selectedCustomer" class="alert alert-info d-none">
+                    <strong>Selected:</strong> <span id="selectedCustomerName"></span>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('multi_grn.index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary" id="nextBtn" disabled>
+                        Next: Select POs <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    const customerDropdown = $('#customerDropdown');
+    const loadingMessage = $('#loadingMessage');
+    const errorMessage = $('#errorMessage');
+    const selectedCustomer = $('#selectedCustomer');
+    const nextBtn = $('#nextBtn');
+    
+    // Initialize Select2 with search enabled
+    customerDropdown.select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select a customer',
+        allowClear: true,
+        width: '100%'
+    });
+    
+    // Load customers from API
+    loadingMessage.show();
+    
+    fetch('/multi-grn/api/customers-dropdown')
+        .then(response => response.json())
+        .then(data => {
+            loadingMessage.hide();
+
+            if (data.success && data.customers) {
+                // Populate dropdown with customers
+                data.customers.forEach(customer => {
+                    const option = new Option(
+                        customer.CardName,
+                        customer.CardCode,
+                        false,
+                        false
+                    );
+                    $(option).data('customer-name', customer.CardName);
+                    customerDropdown.append(option);
+                });
+
+                customerDropdown.trigger('change');
+
+                console.log(`✅ Loaded ${data.customers.length} customers`);
+            } else {
+                errorMessage.text('Failed to load customers: ' + (data.error || 'Unknown error'));
+                errorMessage.show();
+            }
+        })
+        .catch(err => {
+            loadingMessage.hide();
+            errorMessage.text('Error loading customers: ' + err.message);
+            errorMessage.show();
+            console.error('Error loading customers:', err);
+        });
+    
+    // Handle customer selection
+    customerDropdown.on('change', function() {
+        const selectedCode = $(this).val();
+        const selectedOption = $(this).find('option:selected');
+        const selectedName = selectedOption.data('customer-name') || selectedOption.text();
+        
+        if (selectedCode) {
+            $('#customer_code').val(selectedCode);
+            $('#customer_name').val(selectedName);
+            
+            $('#selectedCustomerName').text(`${selectedName} (${selectedCode})`);
+            selectedCustomer.removeClass('d-none');
+            
+            nextBtn.prop('disabled', false);
+        } else {
+            $('#customer_code').val('');
+            $('#customer_name').val('');
+            selectedCustomer.addClass('d-none');
+            nextBtn.prop('disabled', true);
+        }
+    });
+    
+    // Prevent form submission if no customer selected
+    $('#customerForm').on('submit', function(e) {
+        if (!$('#customer_code').val()) {
+            e.preventDefault();
+            alert('Please select a customer');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

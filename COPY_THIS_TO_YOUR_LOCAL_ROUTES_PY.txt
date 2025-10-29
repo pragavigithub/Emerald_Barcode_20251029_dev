@@ -1,0 +1,44 @@
+================================================================================
+SIMPLE FIX - Copy This Line to Your Local routes.py File
+================================================================================
+
+YOUR LOCAL FILE:
+E:\emerald\20251022\11\20251006_BarCode_dev\modules\grpo\routes.py
+
+FIND LINE 17 (it currently says):
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')
+
+REPLACE WITH THIS EXACT LINE:
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+THAT'S IT!
+
+================================================================================
+STEP BY STEP:
+================================================================================
+
+1. Open: E:\emerald\20251022\11\20251006_BarCode_dev\modules\grpo\routes.py
+
+2. Go to line 17 (look for the Blueprint definition)
+
+3. Change from:
+   grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')
+   
+   To:
+   grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+4. Save the file
+
+5. Restart Flask (Ctrl+C, then: python main.py)
+
+6. Test - it will work! ✅
+
+================================================================================
+WHAT CHANGED:
+================================================================================
+
+Added: , template_folder='templates'
+
+This tells Flask where to find the templates for the GRPO module.
+
+================================================================================

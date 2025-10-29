@@ -1,0 +1,163 @@
+================================================================================
+                GRPO BARCODE FIX - STEP BY STEP CHECKLIST
+================================================================================
+
+Follow these steps in order. Check off each step as you complete it.
+
+================================================================================
+PREPARATION
+================================================================================
+
+[ ] Pull latest code from Replit to your local environment
+[ ] Open terminal/command prompt
+[ ] Navigate to: E:\emerald\20251022\10\20251006_BarCode_dev
+
+================================================================================
+STEP 1: FIX BARCODE COLUMNS IN MYSQL (2 minutes)
+================================================================================
+
+[ ] Open MySQL:
+    
+    mysql -u root -p wms_db
+
+[ ] Run these 3 ALTER TABLE commands (copy/paste one at a time):
+
+    ALTER TABLE grpo_items MODIFY COLUMN barcode TEXT;
+    
+    ALTER TABLE grpo_serial_numbers MODIFY COLUMN barcode TEXT;
+    
+    ALTER TABLE grpo_batch_numbers MODIFY COLUMN barcode TEXT;
+
+[ ] Verify the fix worked:
+
+    DESCRIBE grpo_serial_numbers;
+    
+    (Look for: barcode | text | YES)
+
+[ ] Exit MySQL:
+
+    exit;
+
+================================================================================
+STEP 2: FIX BLUEPRINT TEMPLATE PATH (1 minute)
+================================================================================
+
+[ ] Open file in your editor:
+    
+    modules\grpo\routes.py
+
+[ ] Find line 17 (near the top, after imports)
+
+[ ] Current line says:
+    
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')
+
+[ ] Change to (add template_folder='templates'):
+    
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+[ ] Save the file
+
+================================================================================
+STEP 3: RESTART FLASK APPLICATION (30 seconds)
+================================================================================
+
+[ ] In your terminal, press Ctrl+C to stop Flask
+
+[ ] Start Flask again:
+    
+    python main.py
+
+[ ] Verify it's running:
+    
+    You should see: * Running on http://127.0.0.1:5000
+
+================================================================================
+STEP 4: TEST BARCODE GENERATION (2 minutes)
+================================================================================
+
+[ ] Open browser: http://127.0.0.1:5000/grpo
+
+[ ] Click on GRPO document #13 (or create a new one)
+
+[ ] Click "Add Item"
+
+[ ] Fill in item details:
+    - Item Code: S1
+    - Warehouse: 7000-QFG
+    - Quantity: 1
+
+[ ] Click "Add to Document"
+
+[ ] In the Serial Number modal:
+    - Manufacturer Serial: 123
+    - Internal Serial: 123
+
+[ ] Click "Add Serial Number"
+
+[ ] VERIFY SUCCESS:
+    ✅ No "data too long" error
+    ✅ Success message appears
+    ✅ Detail page loads (no 500 error)
+    ✅ Serial number is listed
+    ✅ QR code barcode is visible
+
+================================================================================
+OPTIONAL STEP 5: UPDATE MYSQL SCHEMA (If not done yet)
+================================================================================
+
+[ ] Run the schema update script:
+    
+    python mysql_grpo_update_existing.py
+
+[ ] Type 'yes' when prompted
+
+[ ] Verify completion message
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If you still get "Data too long" error:
+  → Check DESCRIBE grpo_serial_numbers; shows "text" not "varchar"
+  → If still varchar, run the ALTER TABLE command again
+
+If you still get "Template not found" error:
+  → Verify line 17 in routes.py has template_folder='templates'
+  → Verify templates exist in: modules\grpo\templates\
+  → Restart Flask application
+
+If barcode doesn't generate but serial saves:
+  → This is OK! The serial number is saved safely
+  → Check logs for warnings about barcode generation
+  → The system continues to work without the barcode image
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Your system is working correctly when:
+
+✅ You can add serial numbers without errors
+✅ You can add batch numbers without errors
+✅ Detail pages load without 500 errors
+✅ QR code barcodes are visible in the UI
+✅ No "data too long" errors in logs
+✅ No "template not found" errors in logs
+
+================================================================================
+NEED HELP?
+================================================================================
+
+Read these detailed guides:
+
+→ COMPLETE_BARCODE_FIX_GUIDE.md - Complete step-by-step guide
+→ BARCODE_COLUMN_SIZE_FIX.md - Barcode column fix details
+→ GRPO_BARCODE_IMPROVEMENTS.md - Code improvements documentation
+→ README_BARCODE_FIXES.md - Complete overview
+
+================================================================================
+TIME ESTIMATE: 5 minutes total
+DIFFICULTY: Easy (just SQL + 1 line of code)
+RISK: None (safe changes, no data loss)
+================================================================================

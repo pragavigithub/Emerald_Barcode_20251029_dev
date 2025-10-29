@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Create Serial Number Transfer - WMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('inventory_transfer.serial_index') }}">Serial Number Transfer</a></li>
+                    <li class="breadcrumb-item active">Create Transfer</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="hash"></i> Create Serial Number Stock Transfer
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="createTransferForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="series" class="form-label">Document Series <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="series" name="series" required>
+                                        <option value="">Select series...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="doc_num" class="form-label">Document Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="doc_num" name="doc_num" 
+                                           placeholder="Enter Document Number" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="from_warehouse" class="form-label">From Warehouse <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="from_warehouse" name="from_warehouse" 
+                                           placeholder="Will be auto-filled from SAP" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="to_warehouse" class="form-label">To Warehouse <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="to_warehouse" name="to_warehouse" 
+                                           placeholder="Will be auto-filled from SAP" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="doc_entry" name="doc_entry">
+                        <input type="hidden" id="transfer_data" name="transfer_data">
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Optional notes about this transfer"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('inventory_transfer.serial_index') }}" class="btn btn-secondary">
+                                <i data-feather="arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="save"></i> Create Transfer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6><i data-feather="help-circle"></i> How Serial Number Transfers Work</h6>
+                    <ol class="mb-0 text-muted">
+                        <li>Create a transfer with source and destination warehouses</li>
+                        <li>Add items by specifying Item Code and Serial Numbers</li>
+                        <li>System validates each serial number against SAP B1</li>
+                        <li>Submit for QC approval once all serial numbers are validated</li>
+                        <li>QC team reviews and posts to SAP B1</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let transferData = null;
+
+// Load series from API on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSeries();
+    
+    // Add event listener for DocNum input
+    document.getElementById('doc_num').addEventListener('change', fetchDocEntry);
+});
+
+function loadSeries() {
+    fetch('/api/get-invt-series')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.series) {
+                const seriesSelect = document.getElementById('series');
+                seriesSelect.innerHTML = '<option value="">Select series...</option>';
+
+                data.series.forEach(series => {
+                    const option = new Option(
+                        `${series.SeriesName} (${series.Series})`,
+                        series.Series
+                    );
+                    seriesSelect.appendChild(option);
+                });
+
+                console.log('Loaded', data.series.length, 'series');
+            } else {
+                console.error('Failed to load series:', data.error || 'Unknown error');
+                alert('Failed to load document series. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading series:', error);
+            alert('Error loading document series. Please check your connection.');
+        });
+}
+
+function fetchDocEntry() {
+    const series = document.getElementById('series').value;
+    const docNum = document.getElementById('doc_num').value;
+    
+    if (!series || !docNum) {
+        return;
+    }
+    
+    console.log('Fetching DocEntry for Series:', series, 'DocNum:', docNum);
+    
+    // Show loading state
+    const fromWarehouse = document.getElementById('from_warehouse');
+    const toWarehouse = document.getElementById('to_warehouse');
+    fromWarehouse.value = 'Loading...';
+    toWarehouse.value = 'Loading...';
+    
+    // First get DocEntry
+    fetch(`/api/get-invt-docentry?series=${series}&doc_num=${docNum}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.doc_entry) {
+                console.log('Got DocEntry:', data.doc_entry);
+                document.getElementById('doc_entry').value = data.doc_entry;
+                
+                // Now fetch transfer details using DocEntry
+                return fetch(`/api/get-invt-details?doc_entry=${data.doc_entry}`);
+            } else {
+                throw new Error(data.error || 'Failed to get DocEntry');
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data) {
+                transferData = data.data;
+                console.log('Got transfer data:', transferData);
+                
+                // Fill in warehouse data
+                fromWarehouse.value = transferData.FromWarehouse || '';
+                toWarehouse.value = transferData.ToWarehouse || '';
+                
+                // Store transfer data as JSON
+                document.getElementById('transfer_data').value = JSON.stringify(transferData);
+                
+                console.log('Transfer request loaded successfully');
+            } else {
+                throw new Error(data.error || 'Failed to get transfer details');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching transfer data:', error);
+            alert(`Error: ${error.message}`);
+            fromWarehouse.value = '';
+            toWarehouse.value = '';
+            document.getElementById('doc_entry').value = '';
+            document.getElementById('transfer_data').value = '';
+        });
+}
+
+// Add event listener for series change to clear fields
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('series').addEventListener('change', function() {
+        document.getElementById('from_warehouse').value = '';
+        document.getElementById('to_warehouse').value = '';
+        document.getElementById('doc_entry').value = '';
+        document.getElementById('transfer_data').value = '';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+================================================================================
+CRITICAL: APPLY THESE 2 FIXES FOR BARCODE GENERATION
+================================================================================
+
+Your Error Logs Show:
+  ❌ "Data too long for column 'barcode' at row 1" 
+  ❌ "Template not found: grpo/grpo_detail.html"
+
+Both must be fixed for barcodes to work!
+
+================================================================================
+FIX #1: BARCODE COLUMN SIZE (Run SQL Commands)
+================================================================================
+
+Open MySQL and run:
+
+    mysql -u root -p wms_db
+
+Then run these 3 commands:
+
+    ALTER TABLE grpo_items MODIFY COLUMN barcode TEXT;
+    ALTER TABLE grpo_serial_numbers MODIFY COLUMN barcode TEXT;
+    ALTER TABLE grpo_batch_numbers MODIFY COLUMN barcode TEXT;
+
+OR use the SQL file:
+
+    mysql -u root -p wms_db < QUICK_FIX_BARCODE_COLUMN.sql
+
+Verify:
+    
+    DESCRIBE grpo_serial_numbers;
+    
+    Should show: barcode | text | YES
+
+================================================================================
+FIX #2: BLUEPRINT TEMPLATE PATH (Edit 1 Line of Code)
+================================================================================
+
+File: E:\emerald\20251022\10\20251006_BarCode_dev\modules\grpo\routes.py
+
+Line 17 - Change from:
+
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')
+
+To (add template_folder parameter):
+
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+Save the file.
+
+================================================================================
+RESTART FLASK
+================================================================================
+
+Press Ctrl+C to stop, then:
+
+    python main.py
+
+================================================================================
+TEST IT
+================================================================================
+
+1. Go to: http://127.0.0.1:5000/grpo
+2. Click GRPO document #13
+3. Add item with serial number
+4. Should work! ✅
+
+================================================================================
+COMPLETE GUIDE: Read COMPLETE_BARCODE_FIX_GUIDE.md
+================================================================================

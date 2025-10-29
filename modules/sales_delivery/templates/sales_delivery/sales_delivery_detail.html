@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+{% block title %}Delivery Note - SO {{ delivery.so_doc_num or 'None' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Delivery Note</h1>
+            <p class="text-muted mb-0">Sales Order: <strong>{{ delivery.so_doc_num or 'None' }}</strong></p>
+        </div>
+        <div>
+            <a href="{{ url_for('sales_delivery.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            {% if delivery.status == 'draft' and delivery.items|length > 0 %}
+            <button type="button" class="btn btn-success" onclick="submitDelivery()">
+                <i class="fas fa-paper-plane"></i> Submit to SAP
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Alert -->
+    {% if delivery.status == 'submitted' %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> Delivery Note successfully posted to SAP B1
+        {% if delivery.sap_doc_num %}
+            - Document Number: <strong>{{ delivery.sap_doc_num }}</strong>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Sales Order Details -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="breadcrumb-item active">Sales Order Details</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="40%">Customer Code:</th>
+                            <td>{{ delivery.card_code or so_data.CardCode or 'None' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Customer Name:</th>
+                            <td>{{ delivery.card_name or so_data.CardName or 'None' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Document Number:</th>
+                            <td>{{ delivery.so_doc_num or so_data.DocNum or 'None' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Currency:</th>
+                            <td>{{ delivery.doc_currency or so_data.DocCurrency or 'INR' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if delivery.status == 'draft' %}
+                                    <span class="badge bg-warning">Draft</span>
+                                {% elif delivery.status == 'submitted' %}
+                                    <span class="badge bg-success">Submitted</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="breadcrumb-item active">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if delivery.status == 'draft' %}
+                    <button type="button" class="btn btn-primary btn-lg w-100 mb-3" onclick="openScanModal()">
+                        <i class="fas fa-barcode"></i> Scan Barcode
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                        <i class="fas fa-plus"></i> Add Item Manually
+                    </button>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        Delivery note has been submitted. No further changes allowed.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Picked Items -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="breadcrumb-item active">Picked Items</h6>
+            <span class="badge bg-secondary">{{ delivery.items|length }} items</span>
+        </div>
+        <div class="card-body">
+            {% if delivery.items %}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th width="10%">Line</th>
+                            <th width="15%">Item Code</th>
+                            <th width="25%">Description</th>
+                            <th width="8%">Qty</th>
+                            <th width="10%">Warehouse</th>
+                            <th width="12%">Batch/Serial</th>
+                            <th width="10%">QR Code</th>
+                            <th width="10%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTable">
+                        {% for item in delivery.items %}
+                        <tr data-item-id="{{ item.id }}">
+                            <td>{{ item.line_number }}</td>
+                            <td><strong>{{ item.item_code }}</strong></td>
+                            <td>{{ item.item_description }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td>{{ item.warehouse_code }}</td>
+                            <td>
+                                {% if item.batch_number %}
+                                    <span class="badge bg-info">Batch: {{ item.batch_number }}</span>
+                                {% endif %}
+                                {% if item.serial_number %}
+                                    <span class="badge bg-primary">Serial: {{ item.serial_number }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if item.batch_number or item.serial_number %}
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                        onclick="generateQRCode('{{ item.id }}', '{{ item.item_code }}', '{{ item.batch_number or item.serial_number }}', '{{ item.warehouse_code }}')">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if delivery.status == 'draft' %}
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteItem({{ item.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle"></i> No items added yet. Scan barcodes or add items manually to begin.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Open Sales Order Lines -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="breadcrumb-item active">Available Sales Order Lines</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th width="8%">Line</th>
+                            <th width="15%">Item Code</th>
+                            <th width="30%">Description</th>
+                            <th width="10%">Ordered</th>
+                            <th width="10%">Open Qty</th>
+                            <th width="10%">Warehouse</th>
+                            <th width="10%">Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in so_data.DocumentLines %}
+                        <tr>
+                            <td>{{ line.LineNum }}</td>
+                            <td><strong>{{ line.ItemCode }}</strong></td>
+                            <td>{{ line.ItemDescription }}</td>
+                            <td class="text-center">{{ line.Quantity }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ line.RemainingOpenQuantity }}</span>
+                            </td>
+                            <td>{{ line.WarehouseCode }}</td>
+                            <td class="text-end">{{ "%.2f"|format(line.UnitPrice) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Add Item to Delivery</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addItemForm">
+                    <div class="mb-3">
+                        <label for="line_select" class="form-label">Select Sales Order Line <span class="text-danger">*</span></label>
+                        <select class="form-select" id="line_select" required>
+                            <option value="">Choose line...</option>
+                            {% for line in so_data.DocumentLines %}
+                            <option value="{{ line.LineNum }}" 
+                                    data-item="{{ line.ItemCode }}" 
+                                    data-open="{{ line.RemainingOpenQuantity }}">
+                                Line {{ line.LineNum }}: {{ line.ItemCode }} - {{ line.ItemDescription }} (Open: {{ line.RemainingOpenQuantity }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="quantity" step="0.01" min="0.01" required>
+                        <small class="form-text text-muted">Open Quantity: <span id="maxQty">0</span></small>
+                    </div>
+                    <div id="batchSerialSection" class="d-none">
+                        <div id="batchSection" class="mb-3 d-none">
+                            <label for="batch_number" class="form-label">Batch Number</label>
+                            <input type="text" class="form-control" id="batch_number">
+                        </div>
+                        <div id="serialSection" class="mb-3 d-none">
+                            <label for="serial_number" class="form-label">Serial Number</label>
+                            <input type="text" class="form-control" id="serial_number">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addItem()">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrModalLabel">QR Code Label</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrCodeContainer"></div>
+                <div id="qrLabelInfo" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="printQRCode()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barcode Scan Modal -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scanModalLabel">Scan Barcode</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanning()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container mb-3">
+                    <video id="scanVideo" class="w-100" autoplay playsinline style="max-height: 400px; background: #000;"></video>
+                    <div class="scanner-overlay"></div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Point your camera at a barcode or QR code. Supported formats: Item Code, DELIVERY:{ItemCode}-{Batch/Serial}
+                </div>
+                <div id="scanResult" class="alert alert-success d-none"></div>
+                <div id="scanError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="stopScanning()" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-primary" onclick="manualBarcodeEntry()">
+                    <i class="fas fa-keyboard"></i> Manual Entry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Ensure modals appear above all content and are clickable */
+#addItemModal, #qrModal, #scanModal {
+    z-index: 9999 !important;
+}
+.modal-backdrop {
+    z-index: 9998 !important;
+}
+/* Scanner container styles */
+.scanner-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+}
+.scanner-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 30%;
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+#qrLabelInfo {
+    text-align: left;
+    font-size: 16px;
+}
+#qrLabelInfo p {
+    margin-bottom: 8px;
+}
+
+/* Print-specific styles - only show QR modal content */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    #qrModal,
+    #qrModal * {
+        visibility: visible;
+    }
+    
+    #qrModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        z-index: 1;
+    }
+    
+    #qrModal .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    #qrModal .modal-header,
+    #qrModal .modal-footer {
+        display: none !important;
+    }
+    
+    #qrModal .modal-content {
+        border: none;
+        box-shadow: none;
+    }
+    
+    #qrModal .modal-body {
+        padding: 20px;
+    }
+    
+    #qrLabelInfo {
+        font-size: 14pt;
+        font-weight: bold;
+    }
+    
+    #qrLabelInfo p {
+        margin-bottom: 10pt;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const deliveryId = {{ delivery.id }};
+
+// Track cumulative quantities added per line
+const addedQuantities = {};
+
+// Initialize tracking from existing items
+{% for item in delivery.items %}
+if (!addedQuantities[{{ item.base_line }}]) {
+    addedQuantities[{{ item.base_line }}] = 0;
+}
+addedQuantities[{{ item.base_line }}] += {{ item.quantity }};
+{% endfor %}
+
+// Wait for DOM to be fully loaded before attaching event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach event listener to line select dropdown
+    const lineSelect = document.getElementById('line_select');
+    if (lineSelect) {
+        lineSelect.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            const itemCode = selected.getAttribute('data-item');
+            const baseLine = parseInt(this.value);
+            const openQty = parseFloat(selected.getAttribute('data-open'));
+            
+            // Calculate remaining quantity
+            const alreadyAdded = addedQuantities[baseLine] || 0;
+            const remainingQty = openQty - alreadyAdded;
+            
+            const maxQtyEl = document.getElementById('maxQty');
+            const quantityEl = document.getElementById('quantity');
+            
+            if (maxQtyEl) maxQtyEl.textContent = remainingQty.toFixed(2);
+            if (quantityEl) {
+                quantityEl.max = remainingQty;
+                quantityEl.value = remainingQty;
+            }
+            
+            if (itemCode) {
+                fetch('{{ url_for("sales_delivery.api_validate_item") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ item_code: itemCode })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const batchSection = document.getElementById('batchSection');
+                    const serialSection = document.getElementById('serialSection');
+                    const batchSerialSection = document.getElementById('batchSerialSection');
+                    
+                    if (batchSection && serialSection && batchSerialSection) {
+                        if (data.batch_required) {
+                            batchSection.classList.remove('d-none');
+                            serialSection.classList.add('d-none');
+                            batchSerialSection.classList.remove('d-none');
+                        } else if (data.serial_required) {
+                            serialSection.classList.remove('d-none');
+                            batchSection.classList.add('d-none');
+                            batchSerialSection.classList.remove('d-none');
+                        } else {
+                            batchSerialSection.classList.add('d-none');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error validating item:', error);
+                });
+            }
+        });
+    }
+});
+
+function addItem() {
+    const lineSelect = document.getElementById('line_select');
+    if (!lineSelect) {
+        console.error('Line select element not found');
+        return;
+    }
+    
+    const baseLine = parseInt(lineSelect.value);
+    const itemCode = lineSelect.options[lineSelect.selectedIndex].getAttribute('data-item');
+    const quantityEl = document.getElementById('quantity');
+    const quantity = quantityEl ? parseFloat(quantityEl.value) : 0;
+    const batchNumberEl = document.getElementById('batch_number');
+    const serialNumberEl = document.getElementById('serial_number');
+    const batchNumber = batchNumberEl ? batchNumberEl.value : '';
+    const serialNumber = serialNumberEl ? serialNumberEl.value : '';
+    
+    if (isNaN(baseLine) || !quantity) {
+        alert('Please fill all required fields');
+        return;
+    }
+    
+    // Validate quantity doesn't exceed open quantity
+    const openQty = parseFloat(lineSelect.options[lineSelect.selectedIndex].getAttribute('data-open'));
+    const alreadyAdded = addedQuantities[baseLine] || 0;
+    const remainingQty = openQty - alreadyAdded;
+    
+    if (quantity > remainingQty) {
+        alert(`Cannot add ${quantity}. Only ${remainingQty.toFixed(2)} remaining for this line.`);
+        return;
+    }
+    
+    const data = {
+        delivery_id: deliveryId,
+        base_line: baseLine,
+        item_code: itemCode,
+        quantity: quantity,
+        batch_number: batchNumber,
+        serial_number: serialNumber
+    };
+    
+    fetch('{{ url_for("sales_delivery.api_add_item") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error adding item: ' + error);
+    });
+}
+
+function deleteItem(itemId) {
+    if (!confirm('Are you sure you want to delete this item?')) {
+        return;
+    }
+    
+    fetch(`{{ url_for("sales_delivery.api_delete_item", item_id=0) }}`.replace('0', itemId), {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function generateQRCode(itemId, itemCode, batchSerial, warehouse) {
+    const qrContainer = document.getElementById('qrCodeContainer');
+    qrContainer.innerHTML = '';
+    
+    const qrData = `DELIVERY:${itemCode}-${batchSerial}`;
+    
+    new QRCode(qrContainer, {
+        text: qrData,
+        width: 256,
+        height: 256
+    });
+    
+    const labelInfo = document.getElementById('qrLabelInfo');
+    labelInfo.innerHTML = `
+        <p><strong>Item Code:</strong> ${itemCode}</p>
+        <p><strong>Batch/Serial:</strong> ${batchSerial}</p>
+        <p><strong>Warehouse:</strong> ${warehouse}</p>
+        <p><strong>QR Data:</strong> ${qrData}</p>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+}
+
+function printQRCode() {
+    window.print();
+}
+
+function submitDelivery() {
+    if (!confirm('Are you sure you want to submit this delivery note to SAP B1?')) {
+        return;
+    }
+    
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    
+    fetch('{{ url_for("sales_delivery.api_submit_delivery") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ delivery_id: deliveryId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Success: ' + data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit to SAP';
+        }
+    })
+    .catch(error => {
+        alert('Error submitting delivery: ' + error);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit to SAP';
+    });
+}
+
+let scanModalInstance = null;
+let isScanning = false;
+
+function openScanModal() {
+    const scanModal = document.getElementById('scanModal');
+    if (!scanModal) {
+        console.error('Scan modal not found');
+        return;
+    }
+    
+    // Clear previous scan results
+    const scanResult = document.getElementById('scanResult');
+    const scanError = document.getElementById('scanError');
+    if (scanResult) scanResult.classList.add('d-none');
+    if (scanError) scanError.classList.add('d-none');
+    
+    // Show the modal
+    scanModalInstance = new bootstrap.Modal(scanModal);
+    scanModalInstance.show();
+    
+    // Start scanning when modal is shown
+    scanModal.addEventListener('shown.bs.modal', function () {
+        startScanning();
+    }, { once: true });
+}
+
+async function startScanning() {
+    if (isScanning) return;
+    
+    const videoElement = document.getElementById('scanVideo');
+    const scanError = document.getElementById('scanError');
+    
+    if (!videoElement) {
+        console.error('Video element not found');
+        return;
+    }
+    
+    try {
+        isScanning = true;
+        
+        // Check if barcodeScanner is available
+        if (!window.barcodeScanner) {
+            throw new Error('Barcode scanner not initialized. Please refresh the page.');
+        }
+        
+        console.log('Starting barcode scan...');
+        
+        // Start the scan using global barcode scanner
+        await window.barcodeScanner.startScan(videoElement, handleScannedBarcode);
+        
+        console.log('Barcode scanner started successfully');
+        
+    } catch (error) {
+        console.error('Error starting scanner:', error);
+        if (scanError) {
+            scanError.textContent = 'Camera Error: ' + error.message + '. Please use Manual Entry instead.';
+            scanError.classList.remove('d-none');
+        }
+        isScanning = false;
+        
+        // Offer manual entry as fallback
+        if (error.message.includes('Camera') || error.message.includes('HTTPS')) {
+            setTimeout(() => manualBarcodeEntry(), 1000);
+        }
+    }
+}
+
+function stopScanning() {
+    if (window.barcodeScanner && isScanning) {
+        window.barcodeScanner.stopScan();
+        isScanning = false;
+        console.log('Barcode scanner stopped');
+    }
+    
+    if (scanModalInstance) {
+        scanModalInstance.hide();
+        scanModalInstance = null;
+    }
+}
+
+function handleScannedBarcode(code) {
+    console.log('Barcode scanned:', code);
+    
+    const scanResult = document.getElementById('scanResult');
+    const scanError = document.getElementById('scanError');
+    
+    // Hide previous messages
+    if (scanResult) scanResult.classList.add('d-none');
+    if (scanError) scanError.classList.add('d-none');
+    
+    // Parse the barcode
+    const parsed = parseBarcodeFormat(code);
+    
+    if (!parsed.itemCode) {
+        if (scanError) {
+            scanError.textContent = 'Invalid barcode format. Expected: Item Code or DELIVERY:{ItemCode}-{Batch/Serial}';
+            scanError.classList.remove('d-none');
+        }
+        return;
+    }
+    
+    // Find matching SO line
+    const lineSelect = document.getElementById('line_select');
+    if (!lineSelect) {
+        console.error('Line select not found');
+        return;
+    }
+    
+    let matchingLine = null;
+    for (let option of lineSelect.options) {
+        const itemCode = option.getAttribute('data-item');
+        if (itemCode === parsed.itemCode) {
+            matchingLine = option;
+            break;
+        }
+    }
+    
+    if (!matchingLine) {
+        if (scanError) {
+            scanError.textContent = `Item ${parsed.itemCode} not found in this Sales Order`;
+            scanError.classList.remove('d-none');
+        }
+        return;
+    }
+    
+    // Stop camera but keep modal open for feedback
+    if (window.barcodeScanner && isScanning) {
+        window.barcodeScanner.stopScan();
+        isScanning = false;
+    }
+    
+    // Show success message
+    if (scanResult) {
+        scanResult.textContent = `Found: ${parsed.itemCode} - Adding to delivery...`;
+        scanResult.classList.remove('d-none');
+    }
+    
+    // Auto-fill and add the item
+    setTimeout(() => {
+        autoAddScannedItem(matchingLine, parsed);
+    }, 800);
+}
+
+function parseBarcodeFormat(code) {
+    const result = {
+        itemCode: null,
+        batchSerial: null
+    };
+    
+    // Format 1: DELIVERY:{ItemCode}-{Batch/Serial}
+    if (code.startsWith('DELIVERY:')) {
+        const parts = code.substring(9).split('-');
+        if (parts.length >= 1) {
+            result.itemCode = parts[0];
+            if (parts.length >= 2) {
+                result.batchSerial = parts.slice(1).join('-');
+            }
+        }
+    }
+    // Format 2: Plain item code
+    else {
+        result.itemCode = code;
+    }
+    
+    return result;
+}
+
+async function autoAddScannedItem(lineOption, parsed) {
+    const baseLine = parseInt(lineOption.value);
+    const itemCode = parsed.itemCode;
+    const openQty = parseFloat(lineOption.getAttribute('data-open'));
+    
+    // Check if already added
+    const alreadyAdded = addedQuantities[baseLine] || 0;
+    const remainingQty = openQty - alreadyAdded;
+    
+    if (remainingQty <= 0) {
+        const scanError = document.getElementById('scanError');
+        if (scanError) {
+            scanError.textContent = `Line ${baseLine} (${itemCode}) has no remaining quantity to deliver`;
+            scanError.classList.remove('d-none');
+        }
+        return;
+    }
+    
+    // Default quantity to 1 or remaining, whichever is smaller
+    const quantity = Math.min(1, remainingQty);
+    
+    // Prepare item data - must include item_code like manual add
+    const itemData = {
+        delivery_id: deliveryId,
+        base_line: baseLine,
+        item_code: itemCode,
+        quantity: quantity
+    };
+    
+    // Add batch/serial if provided
+    if (parsed.batchSerial) {
+        // For now, assume it's a batch number
+        // Future enhancement: query SAP to determine if item is batch or serial managed
+        itemData.batch_number = parsed.batchSerial;
+    }
+    
+    // Submit to server
+    try {
+        const response = await fetch('{{ url_for("sales_delivery.api_add_item") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(itemData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const scanResult = document.getElementById('scanResult');
+            if (scanResult) {
+                scanResult.textContent = `✓ Successfully added: ${itemCode} x${quantity}`;
+                scanResult.classList.remove('d-none');
+            }
+            
+            // Close modal and reload after brief delay for user to see success message
+            setTimeout(() => {
+                if (scanModalInstance) {
+                    scanModalInstance.hide();
+                }
+                location.reload();
+            }, 1500);
+        } else {
+            const scanError = document.getElementById('scanError');
+            if (scanError) {
+                scanError.textContent = 'Error: ' + data.error;
+                scanError.classList.remove('d-none');
+            }
+        }
+    } catch (error) {
+        console.error('Error adding item:', error);
+        const scanError = document.getElementById('scanError');
+        if (scanError) {
+            scanError.textContent = 'Error adding item: ' + error.message;
+            scanError.classList.remove('d-none');
+        }
+    }
+}
+
+function manualBarcodeEntry() {
+    // Stop current scanning
+    stopScanning();
+    
+    // Prompt for barcode
+    const barcode = prompt('Enter barcode or item code:');
+    if (barcode && barcode.trim()) {
+        handleScannedBarcode(barcode.trim());
+    }
+}
+</script>
+{% endblock %}

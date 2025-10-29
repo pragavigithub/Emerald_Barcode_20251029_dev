@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}Direct Inventory Transfer - {{ transfer.transfer_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Direct Inventory Transfer</h1>
+            <p class="text-muted">{{ transfer.transfer_number }}</p>
+        </div>
+        <a href="{{ url_for('direct_inventory_transfer.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Transfer Info -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>From Warehouse:</strong> <span class="badge bg-info">{{ transfer.from_warehouse }}</span></p>
+                            <p><strong>To Warehouse:</strong> <span class="badge bg-success">{{ transfer.to_warehouse }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if transfer.from_bin %}
+                            <p><strong>From Bin:</strong> {{ transfer.from_bin }}</p>
+                            {% endif %}
+                            {% if transfer.to_bin %}
+                            <p><strong>To Bin:</strong> {{ transfer.to_bin }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if transfer.notes %}
+                    <p><strong>Notes:</strong> {{ transfer.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Status</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        {% if transfer.status == 'draft' %}
+                            <span class="badge bg-secondary">Draft</span>
+                        {% elif transfer.status == 'submitted' %}
+                            <span class="badge bg-warning">Submitted</span>
+                        {% elif transfer.status == 'qc_approved' %}
+                            <span class="badge bg-success">QC Approved</span>
+                        {% elif transfer.status == 'posted' %}
+                            <span class="badge bg-primary">Posted</span>
+                        {% elif transfer.status == 'rejected' %}
+                            <span class="badge bg-danger">Rejected</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Total Items:</strong> {{ transfer.items|length }}</p>
+                    {% if transfer.sap_document_number %}
+                    <p><strong>SAP Doc:</strong> {{ transfer.sap_document_number }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Form (only for draft status) -->
+    {% if transfer.status == 'draft' %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-barcode"></i> Scan Barcode / Enter Item Code
+            </h6>
+        </div>
+        <div class="card-body">
+            <form id="addItemForm">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="item_code" class="form-label">Barcode / Item Code <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="item_code" name="item_code" 
+                               placeholder="Scan or enter item code" autofocus required>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="validateItem()">
+                            <i class="fas fa-search"></i> Validate Item
+                        </button>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Item Description</label>
+                        <input type="text" class="form-control" id="item_description" readonly>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Item Type</label>
+                        <input type="text" class="form-control" id="item_type_display" readonly>
+                        <input type="hidden" id="item_type" name="item_type">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                               value="1" min="1" step="1">
+                    </div>
+                </div>
+
+                <!-- Serial Numbers Section (shown only for serial items) -->
+                <div id="serialSection" class="row" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="serial_numbers" class="form-label">Serial Numbers (comma-separated)</label>
+                        <textarea class="form-control" id="serial_numbers" name="serial_numbers" rows="2"
+                                  placeholder="Enter serial numbers separated by commas"></textarea>
+                        <small class="text-muted">Example: SN001, SN002, SN003</small>
+                    </div>
+                </div>
+
+                <!-- Batch Number Section (shown only for batch items) -->
+                <div id="batchSection" class="row" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="batch_number" class="form-label">Batch Number</label>
+                        <input type="text" class="form-control" id="batch_number" name="batch_number"
+                               placeholder="Enter batch number">
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Items Table -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Transfer Items</h6>
+        </div>
+        <div class="card-body">
+            {% if transfer.items %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Item Code</th>
+                            <th>Description</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Batch/Serial</th>
+                            <th>Status</th>
+                            {% if transfer.status == 'draft' %}
+                            <th>Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        {% for item in transfer.items %}
+                        <tr id="item-{{ item.id }}">
+                            <td>{{ item.item_code }}</td>
+                            <td>{{ item.item_description }}</td>
+                            <td>
+                                {% if item.item_type == 'serial' %}
+                                    <span class="badge bg-warning">Serial</span>
+                                {% elif item.item_type == 'batch' %}
+                                    <span class="badge bg-info">Batch</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">None</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% if item.item_type == 'serial' and item.serial_numbers %}
+                                    {% set sns = item.serial_numbers|from_json %}
+                                    <small>{{ sns|length }} serials</small>
+                                {% elif item.item_type == 'batch' and item.batch_number %}
+                                    {{ item.batch_number }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.validation_status == 'validated' %}
+                                    <span class="badge bg-success">Validated</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                            {% if transfer.status == 'draft' %}
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="deleteItem({{ item.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Submit Button -->
+            {% if transfer.status == 'draft' and transfer.items %}
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-primary" onclick="submitTransfer()">
+                    <i class="fas fa-paper-plane"></i> Submit for QC Approval
+                </button>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                <p class="text-muted">No items added yet. Scan a barcode or enter an item code to add items.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const transferId = {{ transfer.id }};
+
+function validateItem() {
+    const itemCode = document.getElementById('item_code').value.trim();
+    
+    if (!itemCode) {
+        alert('Please enter an item code');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('item_code', itemCode);
+
+    fetch('/direct-inventory-transfer/api/validate-item', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('item_description').value = data.item_description;
+            document.getElementById('item_type').value = data.item_type;
+            document.getElementById('item_type_display').value = data.item_type.charAt(0).toUpperCase() + data.item_type.slice(1);
+            
+            if (data.item_type === 'serial') {
+                document.getElementById('serialSection').style.display = 'block';
+                document.getElementById('batchSection').style.display = 'none';
+            } else if (data.item_type === 'batch') {
+                document.getElementById('serialSection').style.display = 'none';
+                document.getElementById('batchSection').style.display = 'block';
+            } else {
+                document.getElementById('serialSection').style.display = 'none';
+                document.getElementById('batchSection').style.display = 'none';
+            }
+        } else {
+            alert('Validation failed: ' + data.error);
+            document.getElementById('item_description').value = '';
+            document.getElementById('item_type').value = '';
+            document.getElementById('item_type_display').value = '';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error validating item');
+    });
+}
+
+document.getElementById('addItemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`/direct-inventory-transfer/${transferId}/add_item`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding item');
+    });
+});
+
+function deleteItem(itemId) {
+    if (!confirm('Are you sure you want to delete this item?')) {
+        return;
+    }
+
+    fetch(`/direct-inventory-transfer/items/${itemId}/delete`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`item-${itemId}`).remove();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting item');
+    });
+}
+
+function submitTransfer() {
+    if (!confirm('Are you sure you want to submit this transfer for QC approval?')) {
+        return;
+    }
+
+    fetch(`/direct-inventory-transfer/${transferId}/submit`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error submitting transfer');
+    });
+}
+</script>
+{% endblock %}

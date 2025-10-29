@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('multi_grn.index') }}">Multiple GRN</a></li>
+            <li class="breadcrumb-item active">Step 3: Select Line Items</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-list"></i> Step 3: Select Line Items</h4>
+            <small>Customer: {{ batch.customer_name }}</small>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% for detail in po_details %}
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h5>PO #{{ detail.po_link.po_doc_num }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" class="select-all-lines" data-po="{{ detail.po_link.id }}"></th>
+                                        <th>Item Code</th>
+                                        <th>Description</th>
+                                        <th>Ordered Qty</th>
+                                        <th>Open Qty</th>
+                                        <th>Receive Qty</th>
+                                        <th>Warehouse</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in detail.lines %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="lines_po_{{ detail.po_link.id }}[]" 
+                                                   value='{{ line | tojson }}' class="line-checkbox-{{ detail.po_link.id }}">
+                                        </td>
+                                        <td>{{ line.ItemCode }}</td>
+                                        <td>{{ line.ItemDescription }}</td>
+                                        <td>{{ line.Quantity }}</td>
+                                        <td>{{ line.OpenQuantity }}</td>
+                                        <td>
+                                            <input type="number" step="0.001" 
+                                                   name="qty_po_{{ detail.po_link.id }}_line_{{ line.LineNum }}" 
+                                                   value="{{ line.OpenQuantity }}" 
+                                                   max="{{ line.OpenQuantity }}" 
+                                                   min="0" class="form-control form-control-sm" style="width: 100px;">
+                                        </td>
+                                        <td>{{ line.WarehouseCode }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{{ url_for('multi_grn.create_step2_select_pos', batch_id=batch.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        Next: Review <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.select-all-lines').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const poId = this.dataset.po;
+        document.querySelectorAll(`.line-checkbox-${poId}`).forEach(cb => cb.checked = this.checked);
+    });
+});
+</script>
+{% endblock %}

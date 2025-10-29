@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% block title %}Create Direct Inventory Transfer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Create Direct Inventory Transfer</h1>
+        <a href="{{ url_for('direct_inventory_transfer.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Create Transfer Form -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-barcode"></i> Step 1: Scan Barcode / Enter Item Code
+            </h6>
+        </div>
+        <div class="card-body">
+            <form id="createTransferForm" method="POST" action="{{ url_for('direct_inventory_transfer.create') }}">
+                <!-- Step 1: Barcode Scanning -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="item_code" class="form-label">Barcode / Item Code <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="item_code" name="item_code" 
+                                   placeholder="Scan or enter item code" autofocus required>
+                            <button type="button" class="btn btn-outline-primary" onclick="startBarcodeScanner()">
+                                <i class="fas fa-camera"></i> Scan
+                            </button>
+                            <button type="button" class="btn btn-outline-success" onclick="validateItem()">
+                                <i class="fas fa-search"></i> Validate
+                            </button>
+                        </div>
+                        <small class="text-muted">Scan barcode or manually enter item code, then click Validate</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Item Description</label>
+                        <input type="text" class="form-control" id="item_description" readonly>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Item Type</label>
+                        <input type="text" class="form-control" id="item_type_display" readonly>
+                        <input type="hidden" id="item_type" name="item_type">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                               value="1" min="1" step="1" required>
+                    </div>
+                </div>
+
+                <!-- Serial Numbers Section (shown only for serial items) -->
+                <div id="serialSection" class="row" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="serial_numbers" class="form-label">Serial Numbers (comma-separated) <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="serial_numbers" name="serial_numbers" rows="3"
+                                  placeholder="Enter serial numbers separated by commas"></textarea>
+                        <small class="text-muted">Number of serial numbers must match the quantity</small>
+                    </div>
+                </div>
+
+                <!-- Batch Number Section (shown only for batch items) -->
+                <div id="batchSection" class="row" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="batch_number" class="form-label">Batch Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="batch_number" name="batch_number"
+                               placeholder="Enter batch number">
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Step 2: Warehouse Selection (only shown after item validation) -->
+                <div id="warehouseSection" style="display: none;">
+                    <div class="card-header py-3 mb-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-warehouse"></i> Step 2: Select Warehouses
+                        </h6>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="from_warehouse" class="form-label">From Warehouse <span class="text-danger">*</span></label>
+                            <select class="form-select" id="from_warehouse" name="from_warehouse" required>
+                                <option value="">Select From Warehouse</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="to_warehouse" class="form-label">To Warehouse <span class="text-danger">*</span></label>
+                            <select class="form-select" id="to_warehouse" name="to_warehouse" required>
+                                <option value="">Select To Warehouse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="from_bin" class="form-label">From Bin (Optional)</label>
+                            <input type="text" class="form-control" id="from_bin" name="from_bin" 
+                                   placeholder="Enter from bin location">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="to_bin" class="form-label">To Bin (Optional)</label>
+                            <input type="text" class="form-control" id="to_bin" name="to_bin" 
+                                   placeholder="Enter to bin location">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Enter any notes or comments"></textarea>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Note:</strong> This will create the transfer document with the scanned item already included.
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Create Transfer
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Barcode Scanner Modal -->
+<div class="modal fade" id="barcodeScannerModal" tabindex="-1" aria-labelledby="barcodeScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="barcodeScannerModalLabel">
+                    <i class="fas fa-camera"></i> Scan Barcode
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container" style="position: relative; width: 100%; height: 400px;">
+                    <video id="barcodeVideo" class="scanner-video" autoplay playsinline 
+                           style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div class="scanner-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                         border: 2px solid #ff0000; width: 80%; height: 50px;"></div>
+                </div>
+                <div class="mt-3" id="scanResult" style="display: none;">
+                    <div class="alert alert-success">
+                        <strong>Scanned:</strong> <span id="scannedCode"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let barcodeScanner = null;
+let itemValidated = false;
+
+// Load warehouses on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadWarehouses();
+});
+
+function loadWarehouses() {
+    fetch('/direct-inventory-transfer/api/get-warehouses')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const fromSelect = document.getElementById('from_warehouse');
+                const toSelect = document.getElementById('to_warehouse');
+                
+                data.warehouses.forEach(wh => {
+                    const fromOption = new Option(wh.WarehouseName + ' (' + wh.WarehouseCode + ')', wh.WarehouseCode);
+                    const toOption = new Option(wh.WarehouseName + ' (' + wh.WarehouseCode + ')', wh.WarehouseCode);
+                    fromSelect.add(fromOption);
+                    toSelect.add(toOption);
+                });
+            } else {
+                console.error('Failed to load warehouses:', data.error);
+            }
+        })
+        .catch(error => console.error('Error loading warehouses:', error));
+}
+
+function startBarcodeScanner() {
+    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+    modal.show();
+    
+    document.getElementById('barcodeScannerModal').addEventListener('shown.bs.modal', function () {
+        initBarcodeScanner();
+    });
+    
+    document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
+        stopBarcodeScanner();
+    });
+}
+
+function initBarcodeScanner() {
+    const video = document.getElementById('barcodeVideo');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+                
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.init({
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: video
+                        },
+                        decoder: {
+                            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader", "upc_reader"]
+                        }
+                    }, function(err) {
+                        if (err) {
+                            console.error('Quagga initialization error:', err);
+                            return;
+                        }
+                        Quagga.start();
+                    });
+                    
+                    Quagga.onDetected(function(result) {
+                        const code = result.codeResult.code;
+                        document.getElementById('scannedCode').textContent = code;
+                        document.getElementById('scanResult').style.display = 'block';
+                        document.getElementById('item_code').value = code;
+                        
+                        setTimeout(function() {
+                            bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal')).hide();
+                            validateItem();
+                        }, 1000);
+                    });
+                }
+            })
+            .catch(function(error) {
+                console.error('Camera access error:', error);
+                alert('Could not access camera. Please enter barcode manually.');
+            });
+    }
+}
+
+function stopBarcodeScanner() {
+    if (typeof Quagga !== 'undefined') {
+        Quagga.stop();
+    }
+    
+    const video = document.getElementById('barcodeVideo');
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+}
+
+function validateItem() {
+    const itemCode = document.getElementById('item_code').value.trim();
+    
+    if (!itemCode) {
+        alert('Please enter an item code');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('item_code', itemCode);
+
+    fetch('/direct-inventory-transfer/api/validate-item', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('item_description').value = data.item_description;
+            document.getElementById('item_type').value = data.item_type;
+            document.getElementById('item_type_display').value = data.item_type.charAt(0).toUpperCase() + data.item_type.slice(1);
+            
+            if (data.item_type === 'serial') {
+                document.getElementById('serialSection').style.display = 'block';
+                document.getElementById('batchSection').style.display = 'none';
+                document.getElementById('serial_numbers').required = true;
+                document.getElementById('batch_number').required = false;
+            } else if (data.item_type === 'batch') {
+                document.getElementById('serialSection').style.display = 'none';
+                document.getElementById('batchSection').style.display = 'block';
+                document.getElementById('serial_numbers').required = false;
+                document.getElementById('batch_number').required = true;
+            } else {
+                document.getElementById('serialSection').style.display = 'none';
+                document.getElementById('batchSection').style.display = 'none';
+                document.getElementById('serial_numbers').required = false;
+                document.getElementById('batch_number').required = false;
+            }
+            
+            document.getElementById('warehouseSection').style.display = 'block';
+            itemValidated = true;
+            
+            alert('Item validated successfully! Now select warehouses.');
+        } else {
+            alert('Validation failed: ' + data.error);
+            document.getElementById('item_description').value = '';
+            document.getElementById('item_type').value = '';
+            document.getElementById('item_type_display').value = '';
+            document.getElementById('warehouseSection').style.display = 'none';
+            itemValidated = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error validating item');
+    });
+}
+
+document.getElementById('createTransferForm').addEventListener('submit', function(e) {
+    if (!itemValidated) {
+        e.preventDefault();
+        alert('Please validate the item first by clicking the Validate button');
+        return false;
+    }
+    
+    const fromWarehouse = document.getElementById('from_warehouse').value;
+    const toWarehouse = document.getElementById('to_warehouse').value;
+    
+    if (fromWarehouse === toWarehouse) {
+        e.preventDefault();
+        alert('From Warehouse and To Warehouse must be different');
+        return false;
+    }
+    
+    const itemType = document.getElementById('item_type').value;
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    if (itemType === 'serial') {
+        const serialNumbers = document.getElementById('serial_numbers').value.trim();
+        if (!serialNumbers) {
+            e.preventDefault();
+            alert('Serial numbers are required for serial-managed items');
+            return false;
+        }
+        const serialCount = serialNumbers.split(',').filter(s => s.trim()).length;
+        if (serialCount !== quantity) {
+            e.preventDefault();
+            alert(`Number of serial numbers (${serialCount}) must match quantity (${quantity})`);
+            return false;
+        }
+    }
+    
+    if (itemType === 'batch') {
+        const batchNumber = document.getElementById('batch_number').value.trim();
+        if (!batchNumber) {
+            e.preventDefault();
+            alert('Batch number is required for batch-managed items');
+            return false;
+        }
+    }
+});
+</script>
+
+<!-- Include Quagga.js for barcode scanning -->
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+
+{% endblock %}

@@ -1,0 +1,101 @@
+================================================================================
+                        VISUAL FIX GUIDE - TEMPLATE ERROR
+================================================================================
+
+YOUR FILE: E:\emerald\20251022\11\20251006_BarCode_dev\modules\grpo\routes.py
+
+================================================================================
+STEP 1: OPEN THE FILE
+================================================================================
+
+Open: modules\grpo\routes.py  (in your local folder 11)
+
+================================================================================
+STEP 2: FIND THIS SECTION (around line 15-18)
+================================================================================
+
+You should see something like this:
+
+    import json
+    
+    grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')    ← THIS LINE!
+    
+    @grpo_bp.route('/')
+
+================================================================================
+STEP 3: CHANGE LINE 17
+================================================================================
+
+BEFORE (your current line 17):
+┌────────────────────────────────────────────────────────────┐
+│ grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo')  │
+└────────────────────────────────────────────────────────────┘
+
+AFTER (copy this exact line):
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates') │
+└──────────────────────────────────────────────────────────────────────────────────┘
+
+WHAT WAS ADDED:
+                                                         ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+Just add: , template_folder='templates'
+
+================================================================================
+STEP 4: SAVE AND RESTART
+================================================================================
+
+1. Save the file (Ctrl+S)
+2. Stop Flask (Ctrl+C in terminal)
+3. Start Flask (python main.py)
+4. Test GRPO - IT WILL WORK! ✅
+
+================================================================================
+QUICK COPY-PASTE
+================================================================================
+
+If you want to copy-paste the entire line, use this:
+
+grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+Replace your line 17 with the above line.
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After changing, your line 17 should look EXACTLY like this:
+
+grpo_bp = Blueprint('grpo', __name__, url_prefix='/grpo', template_folder='templates')
+
+Check:
+  ✓ Starts with: grpo_bp = Blueprint(
+  ✓ Has: url_prefix='/grpo'
+  ✓ Has: template_folder='templates'  ← THIS IS THE KEY PART!
+  ✓ Ends with: )
+
+================================================================================
+WHY THIS FIXES THE ERROR
+================================================================================
+
+ERROR: jinja2.exceptions.TemplateNotFound: grpo/grpo_detail.html
+
+REASON: Flask doesn't know where to find the templates
+
+SOLUTION: template_folder='templates' tells Flask:
+  "Look in modules/grpo/templates/ for template files"
+
+================================================================================
+AFTER THE FIX - WHAT WORKS
+================================================================================
+
+✅ View GRPO list page
+✅ Create new GRPO
+✅ Add items to GRPO
+✅ View GRPO detail page  ← THIS WAS FAILING, NOW WORKS!
+✅ Edit GRPO items
+✅ Generate barcodes (already working)
+✅ Serial/batch number management
+
+================================================================================

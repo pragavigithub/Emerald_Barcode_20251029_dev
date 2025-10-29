@@ -1,0 +1,94 @@
+C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\python.exe E:\emerald\20251022\12\20251006_BarCode_dev\main.py 
+ * Serving Flask app 'app'
+ * Debug mode: on
+INFO:werkzeug:WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.131:5000
+INFO:werkzeug:Press CTRL+C to quit
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 888-243-362
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET / HTTP/1.1" 302 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET /dashboard HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET /static/js/app.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET /static/js/barcode-scanner.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:06] "GET /static/manifest.json HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:07] "GET /static/icons/icon-192x192.png HTTP/1.1" 404 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /grpo HTTP/1.1" 302 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /grpo/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /static/css/style.css HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /static/js/app.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /static/js/barcode-scanner.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /static/manifest.json HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:08] "GET /static/icons/icon-192x192.png HTTP/1.1" 404 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /dashboard HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /static/css/style.css HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /static/js/barcode-scanner.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /static/js/app.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /static/manifest.json HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:10] "GET /static/icons/icon-192x192.png HTTP/1.1" 404 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:11] "GET /grpo HTTP/1.1" 302 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:11] "GET /grpo/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:11] "GET /static/css/style.css HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:11] "GET /static/js/barcode-scanner.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:12] "GET /static/js/app.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:12] "GET /static/manifest.json HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:12] "GET /static/icons/icon-192x192.png HTTP/1.1" 404 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:17] "GET /api/get-po-series HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:47] "POST /grpo/create HTTP/1.1" 302 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:47] "GET /grpo/detail/3 HTTP/1.1" 500 -
+Traceback (most recent call last):
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 1478, in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\werkzeug\middleware\proxy_fix.py", line 182, in __call__
+    return self.app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 1458, in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 852, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\emerald\20251022\12\20251006_BarCode_dev\modules\grpo\routes.py", line 41, in detail
+    return render_template('grpo/grpo_detail.html', grpo=grpo)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\templating.py", line 152, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\templating.py", line 133, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\jinja2\environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\jinja2\environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "modules\grpo\templates\grpo\grpo_detail.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "E:\emerald\20251022\12\20251006_BarCode_dev\templates\base.html", line 24, in top-level template code
+    <title>{% block title %}Warehouse Management System{% endblock %}</title>
+  File "modules\grpo\templates\grpo\grpo_detail.html", line 3, in block 'title'
+    {% block title %}GRPO Detail - {{ grpo_doc.po_number }}{% endblock %}
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\Lib\site-packages\jinja2\environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'grpo_doc' is undefined
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:47] "GET /grpo/detail/3?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:47] "GET /grpo/detail/3?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:47] "GET /grpo/detail/3?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 304 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:48] "POST /api/get-doc-entry HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Oct/2025 15:59:48] "POST /api/validate_po HTTP/1.1" 200 -

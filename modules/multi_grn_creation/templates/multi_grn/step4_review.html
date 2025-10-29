@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('multi_grn.index') }}">Multiple GRN</a></li>
+            <li class="breadcrumb-item active">Step 4: Review & Confirm</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-check-circle"></i> Step 4: Review & Confirm</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>Customer:</strong> {{ batch.customer_name }} ({{ batch.customer_code }})<br>
+                <strong>Total POs:</strong> {{ batch.po_links | length }}<br>
+                <strong>Total Items:</strong> {% set total_items = namespace(count=0) %}{% for po_link in batch.po_links %}{% set total_items.count = total_items.count + (po_link.line_selections | length) %}{% endfor %}{{ total_items.count }}
+            </div>
+
+            {% for po_link in batch.po_links %}
+            <div class="card mb-3" id="po-card-{{ po_link.id }}">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">PO #{{ po_link.po_doc_num }}</h5>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openAddItemModal({{ po_link.id }}, '{{ po_link.po_doc_num }}')">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="items-table-{{ po_link.id }}">
+                        <thead>
+                            <tr>
+                                <th>Item Code</th>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>UoM</th>
+                                <th>Warehouse</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in po_link.line_selections %}
+                            <tr id="line-{{ line.id }}">
+                                <td>{{ line.item_code }}</td>
+                                <td>{{ line.item_description }}</td>
+                                <td>{{ line.selected_quantity }}</td>
+                                <td>-</td>
+                                <td>{{ line.warehouse_code }}</td>
+                                <td>
+                                    {% if line.line_status == 'manual' %}
+                                    <span class="badge bg-info">Manual</span>
+                                    {% else %}
+                                    <span class="badge bg-success">From PO</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if line.line_status == 'manual' %}
+                                    <button class="btn btn-sm btn-danger" onclick="deleteManualItem({{ line.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('multi_grn.create_step3_select_lines', batch_id=batch.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+                <button type="button" class="btn btn-success" id="confirmBtn">
+                    <i class="fas fa-paper-plane"></i> Confirm & Post GRNs
+                </button>
+            </div>
+
+            <div id="resultDiv" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Add Item to GRN</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addItemForm">
+                    <input type="hidden" id="modal_po_link_id" name="po_link_id">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="item_code" name="item_code" required>
+                                <button type="button" class="btn btn-outline-primary" onclick="validateItemCode()">
+                                    <i class="fas fa-search"></i> Validate
+                                </button>
+                            </div>
+                            <div id="item_validation_msg" class="mt-1"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="item_name" class="form-label">Item Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="item_name" name="item_description" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" step="0.001" class="form-control" id="quantity" name="quantity" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="uom" class="form-label">Unit of Measure (UoM) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="uom" name="uom" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="warehouse_code" class="form-label">Warehouse <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="warehouse_code" name="warehouse_code" value="7000-FG">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="bin_location" class="form-label">Bin Location</label>
+                            <input type="text" class="form-control" id="bin_location" name="bin_location">
+                        </div>
+                    </div>
+                    
+                    <!-- Serial Numbers Section (for serial-managed items) -->
+                    <div id="serial_numbers_section" style="display: none;">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Serial Numbers</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="serial_numbers_container"></div>
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addSerialNumberRow()">
+                                    <i class="fas fa-plus"></i> Add Serial Number
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Numbers Section (for batch-managed items) -->
+                    <div id="batch_numbers_section" style="display: none;">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Batch Numbers</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="batch_numbers_container"></div>
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addBatchNumberRow()">
+                                    <i class="fas fa-plus"></i> Add Batch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" id="inventory_type" name="inventory_type" value="standard">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddItem()">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPoLinkId = null;
+let currentInventoryType = 'standard';
+let serialNumberCounter = 0;
+let batchNumberCounter = 0;
+
+function openAddItemModal(poLinkId, poDocNum) {
+    currentPoLinkId = poLinkId;
+    document.getElementById('modal_po_link_id').value = poLinkId;
+    document.getElementById('addItemModalLabel').textContent = `Add Item to PO #${poDocNum}`;
+    
+    // Reset form
+    document.getElementById('addItemForm').reset();
+    document.getElementById('item_name').value = '';
+    document.getElementById('uom').value = '';
+    document.getElementById('item_validation_msg').innerHTML = '';
+    
+    // Hide all conditional sections
+    document.getElementById('serial_numbers_section').style.display = 'none';
+    document.getElementById('batch_numbers_section').style.display = 'none';
+    
+    // Clear containers
+    document.getElementById('serial_numbers_container').innerHTML = '';
+    document.getElementById('batch_numbers_container').innerHTML = '';
+    serialNumberCounter = 0;
+    batchNumberCounter = 0;
+    
+    const modal = new bootstrap.Modal(document.getElementById('addItemModal'));
+    modal.show();
+}
+
+function validateItemCode() {
+    const itemCode = document.getElementById('item_code').value.trim();
+    const msgDiv = document.getElementById('item_validation_msg');
+    
+    if (!itemCode) {
+        msgDiv.innerHTML = '<small class="text-danger">Please enter an item code</small>';
+        return;
+    }
+    
+    msgDiv.innerHTML = '<small class="text-info"><i class="fas fa-spinner fa-spin"></i> Validating...</small>';
+    
+    fetch('{{ url_for("multi_grn.validate_item") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ item_code: itemCode })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            currentInventoryType = data.inventory_type;
+            document.getElementById('inventory_type').value = data.inventory_type;
+            document.getElementById('item_name').value = data.item_name || '';
+            document.getElementById('uom').value = data.uom || 'NOS';
+            
+            // Hide all sections first
+            document.getElementById('serial_numbers_section').style.display = 'none';
+            document.getElementById('batch_numbers_section').style.display = 'none';
+            
+            // Show appropriate section based on inventory type
+            if (data.inventory_type === 'serial') {
+                document.getElementById('serial_numbers_section').style.display = 'block';
+                msgDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Serial managed item - Add serial numbers below</small>';
+            } else if (data.inventory_type === 'batch') {
+                document.getElementById('batch_numbers_section').style.display = 'block';
+                msgDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Batch managed item - Add batch details below</small>';
+            } else {
+                msgDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Standard item</small>';
+            }
+        } else {
+            msgDiv.innerHTML = `<small class="text-danger"><i class="fas fa-times"></i> ${data.error}</small>`;
+            document.getElementById('item_name').value = '';
+            document.getElementById('uom').value = '';
+        }
+    })
+    .catch(err => {
+        msgDiv.innerHTML = `<small class="text-danger"><i class="fas fa-times"></i> Error: ${err.message}</small>`;
+    });
+}
+
+function addSerialNumberRow() {
+    const container = document.getElementById('serial_numbers_container');
+    const rowId = `serial_row_${serialNumberCounter++}`;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    const row = document.createElement('div');
+    row.id = rowId;
+    row.className = 'serial-number-row mb-3 p-3 border rounded';
+    row.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <label class="form-label">Manufacturer Serial Number</label>
+                <input type="text" class="form-control serial-mfg-number" placeholder="MFG-SN-001" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Internal Serial Number</label>
+                <input type="text" class="form-control serial-int-number" placeholder="INT-SN-001" required>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-5">
+                <label class="form-label">Manufacture Date</label>
+                <input type="date" class="form-control serial-mfg-date" value="${today}">
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" class="form-control serial-exp-date">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow('${rowId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-12">
+                <label class="form-label">Notes</label>
+                <input type="text" class="form-control serial-notes" placeholder="Optional notes">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(row);
+}
+
+function addBatchNumberRow() {
+    const container = document.getElementById('batch_numbers_container');
+    const rowId = `batch_row_${batchNumberCounter++}`;
+    
+    const row = document.createElement('div');
+    row.id = rowId;
+    row.className = 'batch-number-row mb-3 p-3 border rounded';
+    row.innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Batch Number</label>
+                <input type="text" class="form-control batch-number" placeholder="BATCH-001" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Quantity</label>
+                <input type="number" step="0.001" class="form-control batch-quantity" placeholder="1.0" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" class="form-control batch-exp-date">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow('${rowId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <label class="form-label">Manufacturer Serial Number</label>
+                <input type="text" class="form-control batch-mfg-serial" placeholder="MFG-SN-001">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Internal Serial Number</label>
+                <input type="text" class="form-control batch-int-serial" placeholder="INT-SN-001">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(row);
+}
+
+function removeRow(rowId) {
+    const row = document.getElementById(rowId);
+    if (row) {
+        row.remove();
+    }
+}
+
+function collectSerialNumbers() {
+    const serialRows = document.querySelectorAll('.serial-number-row');
+    const serialNumbers = [];
+    
+    serialRows.forEach(row => {
+        const mfgNumber = row.querySelector('.serial-mfg-number').value;
+        const intNumber = row.querySelector('.serial-int-number').value;
+        const mfgDate = row.querySelector('.serial-mfg-date').value;
+        const expDate = row.querySelector('.serial-exp-date').value;
+        const notes = row.querySelector('.serial-notes').value;
+        
+        if (mfgNumber && intNumber) {
+            serialNumbers.push({
+                ManufacturerSerialNumber: mfgNumber,
+                InternalSerialNumber: intNumber,
+                ManufactureDate: mfgDate || null,
+                ExpiryDate: expDate || null,
+                Notes: notes || 'Manually added'
+            });
+        }
+    });
+    
+    return serialNumbers;
+}
+
+function collectBatchNumbers() {
+    const batchRows = document.querySelectorAll('.batch-number-row');
+    const batchNumbers = [];
+    
+    batchRows.forEach(row => {
+        const batchNumber = row.querySelector('.batch-number').value;
+        const quantity = row.querySelector('.batch-quantity').value;
+        const expDate = row.querySelector('.batch-exp-date').value;
+        const mfgSerial = row.querySelector('.batch-mfg-serial').value;
+        const intSerial = row.querySelector('.batch-int-serial').value;
+        
+        if (batchNumber && quantity) {
+            batchNumbers.push({
+                BatchNumber: batchNumber,
+                Quantity: parseFloat(quantity),
+                ExpiryDate: expDate || null,
+                ManufacturerSerialNumber: mfgSerial || '',
+                InternalSerialNumber: intSerial || ''
+            });
+        }
+    });
+    
+    return batchNumbers;
+}
+
+function submitAddItem() {
+    const form = document.getElementById('addItemForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    if (!data.item_code || !data.quantity) {
+        alert('Please fill in required fields: Item Code and Quantity');
+        return;
+    }
+    
+    // Validate item first if not already validated
+    if (!document.getElementById('item_name').value) {
+        alert('Please validate the item code first');
+        return;
+    }
+    
+    // Collect serial/batch numbers based on item type
+    if (currentInventoryType === 'serial') {
+        const serialNumbers = collectSerialNumbers();
+        const quantity = parseFloat(data.quantity);
+        
+        if (serialNumbers.length === 0) {
+            alert('Please add at least one serial number');
+            return;
+        }
+        
+        if (serialNumbers.length !== quantity) {
+            alert(`You need exactly ${quantity} serial numbers (one per unit). Currently you have ${serialNumbers.length}.`);
+            return;
+        }
+        
+        data.serial_numbers = JSON.stringify(serialNumbers);
+    } else if (currentInventoryType === 'batch') {
+        const batchNumbers = collectBatchNumbers();
+        
+        if (batchNumbers.length === 0) {
+            alert('Please add at least one batch');
+            return;
+        }
+        
+        // Validate total batch quantity matches item quantity
+        const totalBatchQty = batchNumbers.reduce((sum, batch) => sum + batch.Quantity, 0);
+        const itemQty = parseFloat(data.quantity);
+        
+        if (Math.abs(totalBatchQty - itemQty) > 0.001) {
+            alert(`Total batch quantity (${totalBatchQty}) must equal item quantity (${itemQty})`);
+            return;
+        }
+        
+        data.batch_numbers = JSON.stringify(batchNumbers);
+    }
+    
+    fetch('{{ url_for("multi_grn.add_manual_item") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
+            modal.hide();
+            
+            // Reload page to show new item
+            location.reload();
+        } else {
+            alert('Error adding item: ' + result.error);
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+    });
+}
+
+document.getElementById('confirmBtn').addEventListener('click', function() {
+    if (!confirm('Are you sure you want to post these GRNs to SAP B1?')) return;
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Posting...';
+    
+    fetch('{{ url_for("multi_grn.create_step5_post", batch_id=batch.id) }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(res => res.json())
+    .then(data => {
+        const resultDiv = document.getElementById('resultDiv');
+        
+        if (data.success) {
+            let html = '<div class="alert alert-success"><h5>✅ GRNs Posted Successfully!</h5>';
+            html += `<p>Total Success: ${data.total_success} | Total Failed: ${data.total_failed}</p>`;
+            html += '<ul>';
+            data.results.forEach(r => {
+                if (r.success) {
+                    html += `<li>PO ${r.po_num}: GRN #${r.grn_num} created</li>`;
+                } else {
+                    html += `<li class="text-danger">PO ${r.po_num}: Failed - ${r.error}</li>`;
+                }
+            });
+            html += '</ul>';
+            html += `<a href="{{ url_for('multi_grn.view_batch', batch_id=batch.id) }}" class="btn btn-primary mt-2">View Batch Details</a></div>`;
+            resultDiv.innerHTML = html;
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger">❌ Error: ${data.error}</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Confirm & Post GRNs';
+        }
+    })
+    .catch(err => {
+        document.getElementById('resultDiv').innerHTML = `<div class="alert alert-danger">❌ Error: ${err.message}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Confirm & Post GRNs';
+    });
+});
+</script>
+{% endblock %}

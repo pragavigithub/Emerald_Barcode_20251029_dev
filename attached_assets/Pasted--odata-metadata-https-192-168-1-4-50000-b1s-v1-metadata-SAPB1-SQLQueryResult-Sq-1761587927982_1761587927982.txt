@@ -1,0 +1,84 @@
+{
+    "odata.metadata": "https://192.168.1.4:50000/b1s/v1/$metadata#SAPB1.SQLQueryResult",
+    "SqlText": "SELECT T0.[DocEntry],T0.[DocNum],T0.[Series],T1.[SeriesName] FROM [OWTQ] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE T0.[Series] =:series AND T0.[DocStatus] = 'O' ORDER BY T0.[DocNum]",
+    "value": [
+        {
+            "DocEntry": 10,
+            "DocNum": 5000001,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 11,
+            "DocNum": 5000002,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 12,
+            "DocNum": 5000003,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 14,
+            "DocNum": 5000005,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 15,
+            "DocNum": 5000006,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 16,
+            "DocNum": 5000007,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 17,
+            "DocNum": 5000008,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 18,
+            "DocNum": 5000009,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 19,
+            "DocNum": 5000010,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 20,
+            "DocNum": 5000011,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 21,
+            "DocNum": 5000012,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 24,
+            "DocNum": 5000015,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        },
+        {
+            "DocEntry": 25,
+            "DocNum": 5000016,
+            "Series": 195,
+            "SeriesName": "OTHR2324"
+        }
+    ]
+}

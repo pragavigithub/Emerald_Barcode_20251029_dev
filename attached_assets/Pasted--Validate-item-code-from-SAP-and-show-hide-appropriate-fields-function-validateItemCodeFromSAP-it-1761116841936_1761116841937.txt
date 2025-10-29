@@ -1,0 +1,81 @@
+// Validate item code from SAP and show/hide appropriate fields
+function validateItemCodeFromSAP(itemCode) {
+    console.log(`🔍 Starting validation for item: ${itemCode}`);
+    
+    fetch(`/grpo/validate-item/${itemCode}`)
+        .then(response => {
+            console.log(`📡 Received response status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            itemValidationResult = data;
+            console.log('📦 Full validation result:', JSON.stringify(data, null, 2));
+            console.log('batch_required:', data.batch_required, 'typeof:', typeof data.batch_required);
+            console.log('serial_required:', data.serial_required, 'typeof:', typeof data.serial_required);
+            console.log('success:', data.success);
+            
+            // Show/hide fields based on validation
+            // Get the batch and serial sections
+            const batchSection = document.getElementById('batch_section');
+            const serialSection = document.getElementById('serial_section');
+            
+            console.log('🎯 Batch section element:', batchSection);
+            console.log('🎯 Serial section element:', serialSection);
+            
+            // Explicit boolean check - only show batch if batch_required is explicitly true
+            if (data.batch_required === true) {
+                // Show batch fields, hide serial section
+                if (batchSection) {
+                    batchSection.style.display = 'block';
+                    console.log('✅ Batch section shown (display: block)');
+                }
+                if (serialSection) {
+                    serialSection.style.display = 'none';
+                    console.log('❌ Serial section hidden (display: none)');
+                }
+                
+                // Enable batch selection and load batches
+                document.getElementById('batch_select').disabled = false;
+                loadCascadingBatches();
+                
+                console.log(`✅ Item ${itemCode} is BATCH managed - showing batch fields, hiding serial fields`);
+            } else if (data.serial_required === true) {
+                // Show serial section, hide batch section completely
+                if (batchSection) {
+                    batchSection.style.display = 'none';
+                    console.log('❌ Batch section hidden (display: none)');
+                }
+                if (serialSection) {
+                    serialSection.style.display = 'block';
+                    console.log('✅ Serial section shown (display: block)');
+                    // Initialize serial number inputs based on quantity
+                    initializeSerialInputs();
+                }
+                
+                console.log(`✅ Item ${itemCode} is SERIAL managed - showing serial fields, hiding batch fields`);
+            } else {
+                // Neither batch nor serial - hide both sections (standard item)
+                if (batchSection) {
+                    batchSection.style.display = 'none';
+                    console.log('❌ Batch section hidden (display: none)');
+                }
+                if (serialSection) {
+                    serialSection.style.display = 'none';
+                    console.log('❌ Serial section hidden (display: none)');
+                }
+                
+                console.log(`ℹ️ Item ${itemCode} is NOT batch/serial managed - standard item (no batch/serial required)`);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error validating item code from SAP:', error);
+            
+            // Explicitly hide both batch and serial sections when validation fails
+            hideBatchSerialSections();
+            
+            console.warn(`⚠️ SAP validation unavailable for ${itemCode} - unable to determine item management type`);
+            
+            // Show user-visible warning
+            alert(`⚠️ Unable to validate item from SAP. Please verify the item code is correct.\n\nBatch/Serial fields will only appear after successful validation.`);
+        });
+}

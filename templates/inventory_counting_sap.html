@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Counting (SAP) - WMS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>Inventory Counting (SAP B1 Integration)</h1>
+            <a href="{{ url_for('inventory_counting') }}" class="btn btn-outline-secondary">
+                <i data-feather="list"></i> View Local Counts
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Document Selection -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Select Counting Document</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="documentSeries" class="form-label">Document Series <span class="text-danger">*</span></label>
+                            <select class="form-select" id="documentSeries" required>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="documentNumber" class="form-label">Document Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="documentNumber" placeholder="Enter document number" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-primary w-100" onclick="loadCountingDocument()">
+                                <i data-feather="search"></i> Load Document
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="loadingIndicator" class="text-center" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading document from SAP B1...</p>
+                </div>
+                
+                <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Details -->
+<div id="documentDetails" class="row" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Document Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Doc Entry:</strong></p>
+                        <p id="docEntry">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Doc Number:</strong></p>
+                        <p id="docNumber">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Count Date:</strong></p>
+                        <p id="countDate">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Status:</strong></p>
+                        <p id="docStatus"><span class="badge bg-info">-</span></p>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Counting Type:</strong></p>
+                        <p id="countingType">-</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Remarks:</strong></p>
+                        <p id="remarks">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Counting Lines -->
+<div id="countingLines" class="row mt-4" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Counting Lines</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="countingLinesTable">
+                        <thead>
+                            <tr>
+                                <th>Line</th>
+                                <th>Item Code</th>
+                                <th>Description</th>
+                                <th>Warehouse</th>
+                                <th>Bin</th>
+                                <th>In Warehouse Qty</th>
+                                <th>Counted Qty</th>
+                                <th>Variance</th>
+                                <th>UoM</th>
+                                <th>Counted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="countingLinesBody">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button type="button" class="btn btn-success" onclick="submitCounting()">
+                        <i data-feather="check"></i> Submit Counting
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        <i data-feather="x"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Scanner Modal -->
+<div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scannerModalLabel">Scan Barcode</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container">
+                    <video id="scanVideo" class="scanner-video" autoplay></video>
+                    <div class="scanner-overlay"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDocument = null;
+let countingLines = [];
+
+// Load document series on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load series asynchronously without blocking
+    loadDocumentSeries().catch(error => {
+        console.error('Failed to load document series:', error);
+        document.getElementById('documentSeries').innerHTML = '<option value="">Error loading series</option>';
+    });
+    
+    // Initialize feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+});
+
+async function loadDocumentSeries() {
+    try {
+        const response = await fetch('/api/get-invcnt-series');
+        const data = await response.json();
+        
+        const seriesSelect = document.getElementById('documentSeries');
+        seriesSelect.innerHTML = '<option value="">Select Series</option>';
+        
+        if (data.success && data.series && data.series.length > 0) {
+            data.series.forEach(series => {
+                const option = document.createElement('option');
+                option.value = series.Series;
+                option.textContent = series.SeriesName;
+                seriesSelect.appendChild(option);
+            });
+        } else {
+            seriesSelect.innerHTML = '<option value="">No series available</option>';
+        }
+    } catch (error) {
+        console.error('Error loading document series:', error);
+        document.getElementById('documentSeries').innerHTML = '<option value="">Error loading series</option>';
+    }
+}
+
+async function loadCountingDocument() {
+    const series = document.getElementById('documentSeries').value;
+    const docNum = document.getElementById('documentNumber').value;
+    
+    if (!series || !docNum) {
+        showError('Please select a series and enter a document number');
+        return;
+    }
+    
+    hideError();
+    showLoading(true);
+    
+    try {
+        // Get DocEntry
+        const docEntryResponse = await fetch(`/api/get-invcnt-docentry?series=${series}&doc_num=${docNum}`);
+        const docEntryData = await docEntryResponse.json();
+        
+        if (!docEntryData.success) {
+            showError(docEntryData.error || 'Document not found');
+            showLoading(false);
+            return;
+        }
+        
+        const docEntry = docEntryData.doc_entry;
+        
+        // Get Document Details
+        const detailsResponse = await fetch(`/api/get-invcnt-details?doc_entry=${docEntry}`);
+        const detailsData = await detailsResponse.json();
+        
+        if (!detailsData.success) {
+            showError(detailsData.error || 'Failed to load document details');
+            showLoading(false);
+            return;
+        }
+        
+        currentDocument = detailsData.data;
+        displayDocumentDetails(currentDocument);
+        displayCountingLines(currentDocument.InventoryCountingLines || []);
+        
+        showLoading(false);
+        
+    } catch (error) {
+        console.error('Error loading document:', error);
+        showError('An error occurred while loading the document');
+        showLoading(false);
+    }
+}
+
+function displayDocumentDetails(doc) {
+    document.getElementById('docEntry').textContent = doc.DocumentEntry || '-';
+    document.getElementById('docNumber').textContent = doc.DocumentNumber || '-';
+    document.getElementById('countDate').textContent = doc.CountDate ? new Date(doc.CountDate).toLocaleDateString() : '-';
+    
+    const status = doc.DocumentStatus || '-';
+    const statusBadge = document.getElementById('docStatus');
+    statusBadge.innerHTML = `<span class="badge ${status === 'cdsOpen' ? 'bg-success' : 'bg-secondary'}">${status}</span>`;
+    
+    document.getElementById('countingType').textContent = doc.CountingType || '-';
+    document.getElementById('remarks').textContent = doc.Remarks || '-';
+    
+    document.getElementById('documentDetails').style.display = 'block';
+}
+
+function displayCountingLines(lines) {
+    countingLines = lines;
+    const tbody = document.getElementById('countingLinesBody');
+    tbody.innerHTML = '';
+    
+    if (lines.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center">No counting lines found</td></tr>';
+        document.getElementById('countingLines').style.display = 'block';
+        return;
+    }
+    
+    lines.forEach((line, index) => {
+        const variance = line.Variance || 0;
+        const varianceClass = variance === 0 ? 'text-success' : (variance > 0 ? 'text-primary' : 'text-danger');
+        const countedChecked = line.Counted === 'tYES' ? 'checked' : '';
+        const uomCountedQty = line.UoMCountedQuantity || line.CountedQuantity || 0;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${line.LineNumber}</td>
+            <td>${line.ItemCode}</td>
+            <td>${line.ItemDescription || '-'}</td>
+            <td>${line.WarehouseCode || '-'}</td>
+            <td>${line.BinEntry || '-'}</td>
+            <td>${(line.InWarehouseQuantity || 0).toFixed(2)}</td>
+            <td>
+                <input type="number" 
+                       class="form-control form-control-sm counted-qty-input" 
+                       data-line-index="${index}"
+                       value="${uomCountedQty}" 
+                       step="0.01"
+                       style="width: 120px;"
+                       onchange="updateCountedQuantity(${index}, this.value)">
+            </td>
+            <td class="${varianceClass} fw-bold" id="variance-${index}">${variance.toFixed(2)}</td>
+            <td>${line.UoMCode || '-'}</td>
+            <td>
+                <div class="form-check">
+                    <input type="checkbox" 
+                           class="form-check-input counted-checkbox" 
+                           data-line-index="${index}"
+                           ${countedChecked}
+                           onchange="updateCountedStatus(${index}, this.checked)">
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('countingLines').style.display = 'block';
+    feather.replace();
+}
+
+function updateCountedQuantity(lineIndex, newQty) {
+    if (countingLines[lineIndex]) {
+        const qty = parseFloat(newQty) || 0;
+        const inWhQty = countingLines[lineIndex].InWarehouseQuantity || 0;
+        const variance = qty - inWhQty;
+        
+        countingLines[lineIndex].UoMCountedQuantity = qty;
+        countingLines[lineIndex].CountedQuantity = qty;
+        countingLines[lineIndex].Variance = variance;
+        
+        // Update variance display
+        const varianceCell = document.getElementById(`variance-${lineIndex}`);
+        if (varianceCell) {
+            const varianceClass = variance === 0 ? 'text-success' : (variance > 0 ? 'text-primary' : 'text-danger');
+            varianceCell.className = `${varianceClass} fw-bold`;
+            varianceCell.textContent = variance.toFixed(2);
+        }
+    }
+}
+
+function updateCountedStatus(lineIndex, isCounted) {
+    if (countingLines[lineIndex]) {
+        countingLines[lineIndex].Counted = isCounted ? 'tYES' : 'tNO';
+    }
+}
+
+function showLoading(show) {
+    const loadingDiv = document.getElementById('loadingIndicator');
+    if (loadingDiv) {
+        loadingDiv.style.display = show ? 'block' : 'none';
+    }
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    } else {
+        console.error('Error message div not found. Error:', message);
+        alert(message);
+    }
+}
+
+function hideError() {
+    const errorDiv = document.getElementById('errorMessage');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+}
+
+function resetForm() {
+    document.getElementById('documentSeries').value = '';
+    document.getElementById('documentNumber').value = '';
+    document.getElementById('documentDetails').style.display = 'none';
+    document.getElementById('countingLines').style.display = 'none';
+    hideError();
+    currentDocument = null;
+    countingLines = [];
+}
+
+async function submitCounting() {
+    if (!currentDocument) {
+        alert('No document loaded');
+        return;
+    }
+    
+    if (!confirm('Submit this counting to SAP B1? This will update the counted quantities and statuses.')) {
+        return;
+    }
+    
+    showLoading(true);
+    hideError();
+    
+    try {
+        // Prepare the payload with updated counting lines
+        const payload = {
+            doc_entry: currentDocument.DocumentEntry,
+            document: {
+                DocumentEntry: currentDocument.DocumentEntry,
+                DocumentNumber: currentDocument.DocumentNumber,
+                Series: currentDocument.Series,
+                CountDate: currentDocument.CountDate,
+                CountTime: currentDocument.CountTime,
+                SingleCounterType: currentDocument.SingleCounterType,
+                SingleCounterID: currentDocument.SingleCounterID,
+                DocumentStatus: currentDocument.DocumentStatus,
+                BranchID: currentDocument.BranchID,
+                DocObjectCodeEx: currentDocument.DocObjectCodeEx,
+                FinancialPeriod: currentDocument.FinancialPeriod,
+                PeriodIndicator: currentDocument.PeriodIndicator,
+                CountingType: currentDocument.CountingType,
+                InventoryCountingLines: countingLines.map(line => ({
+                    DocumentEntry: line.DocumentEntry,
+                    LineNumber: line.LineNumber,
+                    ItemCode: line.ItemCode,
+                    ItemDescription: line.ItemDescription,
+                    Freeze: line.Freeze,
+                    WarehouseCode: line.WarehouseCode,
+                    BinEntry: line.BinEntry,
+                    InWarehouseQuantity: line.InWarehouseQuantity,
+                    Counted: line.Counted,  // Updated value
+                    UoMCode: line.UoMCode,
+                    BarCode: line.BarCode,
+                    UoMCountedQuantity: line.UoMCountedQuantity,  // Updated value
+                    ItemsPerUnit: line.ItemsPerUnit,
+                    CountedQuantity: line.CountedQuantity,
+                    Variance: line.Variance,
+                    VariancePercentage: line.VariancePercentage,
+                    VisualOrder: line.VisualOrder,
+                    LineStatus: line.LineStatus,
+                    CounterType: line.CounterType,
+                    CounterID: line.CounterID,
+                    MultipleCounterRole: line.MultipleCounterRole,
+                    InventoryCountingLineUoMs: line.InventoryCountingLineUoMs || [],
+                    InventoryCountingSerialNumbers: line.InventoryCountingSerialNumbers || [],
+                    InventoryCountingBatchNumbers: line.InventoryCountingBatchNumbers || []
+                })),
+                InventoryCountingDocumentReferencesCollection: currentDocument.InventoryCountingDocumentReferencesCollection || []
+            }
+        };
+        
+        const response = await fetch('/api/update-inventory-counting', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Counting updated successfully in SAP B1!\n\nDocument Entry: ' + currentDocument.DocumentEntry);
+            // Reload the document to show updated values
+            await loadCountingDocument();
+        } else {
+            showError('Failed to update counting: ' + (data.error || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        console.error('Error submitting counting:', error);
+        showError('An error occurred while submitting the counting: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+</script>
+{% endblock %}

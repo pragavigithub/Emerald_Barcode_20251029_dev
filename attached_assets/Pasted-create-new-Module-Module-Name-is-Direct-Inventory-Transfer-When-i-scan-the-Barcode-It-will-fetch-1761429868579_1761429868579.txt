@@ -1,0 +1,294 @@
+create new Module Module Name is Direct Inventory Transfer.
+
+When i scan the Barcode It will fetch the ItemCode and then i choos the from warehouse and to warehouse and From Bin and to bins also based on that inentory transfer happen both Serial Item and Batch Item
+Differentiate Item serial managed or Batch managed. using below URL:
+https://192.168.1.4:50000/b1s/v1/SQLQueries('ItemCode_Batch_Serial_Val')/List
+Body:
+{
+"ParamList": "itemCode='MotoS'"
+}
+Response:
+{
+"odata.metadata": "https://192.168.1.4:50000/b1s/v1/$metadata#SAPB1.SQLQueryResult",
+"SqlText": "Select T0.[ItemCode], IsNULL(T0.[ManBtchNum],'N') as [BatchNum] ,IsNULL(T0.[ManSerNum],'N') as [SerialNum],IsNULL(T0.[MngMethod],'N') as [NonBatch_NonSerialMethod] FROM [OITM] T0 WHERE T0.[ItemCode]=:itemCode",
+"value": [
+{
+"BatchNum": "N",
+"ItemCode": "MotoS",
+"NonBatch_NonSerialMethod": "A",
+"SerialNum": "Y"
+}
+]
+}
+Based on that item serial or batch managed Serial managed text box enable or batch text box enabled same like Inventory transfer already existing same concept apply here also.
+
+From warehouse to warehouse dropdown list i can choose the warehouse.
+https://192.168.0.144:50000/b1s/v1/Warehouses?$select=WarehouseCode,WarehouseName
+
+Method : GET
+RESPOONSE:
+
+{
+    "odata.metadata": "https://192.168.1.4:50000/b1s/v1/$metadata#Warehouses",
+    "value": [
+        {
+            "WarehouseCode": "01",
+            "WarehouseName": "MAINTENENCE Warehouse"
+        },
+        {
+            "WarehouseCode": "1002-FG",
+            "WarehouseName": "Finished Goods GST-AVS CHN"
+        },
+        {
+            "WarehouseCode": "1003-FG",
+            "WarehouseName": "Finished Goods GST-BDS CHN"
+        },
+        {
+            "WarehouseCode": "2002-RM",
+            "WarehouseName": "Raw Material-AVS CHN"
+        },
+        {
+            "WarehouseCode": "2003-RM",
+            "WarehouseName": "Raw Material-BDS CHN"
+        },
+        {
+            "WarehouseCode": "3001-QRM",
+            "WarehouseName": "Quality - Raw Material - BDS"
+        },
+        {
+            "WarehouseCode": "3002-QRM",
+            "WarehouseName": "Quality - Raw Material-AVS"
+        },
+        {
+            "WarehouseCode": "7000-FG",
+            "WarehouseName": "Finished Goods GST-ORD DC CHN - Assigned to AVS"
+        },
+        {
+            "WarehouseCode": "7000-QFG",
+            "WarehouseName": "Defective finished Goods GST-ORD DC CHN - assigned to AVS"
+        },
+        {
+            "WarehouseCode": "GLP -ORD",
+            "WarehouseName": "GLP - ORBS General consumables"
+        },
+        {
+            "WarehouseCode": "GN-AVS",
+            "WarehouseName": "General Warehouse - AVS"
+        },
+        {
+            "WarehouseCode": "GN-BDS",
+            "WarehouseName": "General Warehouse - BDS"
+        },
+        {
+            "WarehouseCode": "Job Work",
+            "WarehouseName": "JOB WORK AVS"
+        },
+        {
+            "WarehouseCode": "JobWork",
+            "WarehouseName": "JOB WORK BDS"
+        },
+        {
+            "WarehouseCode": "MHINV-01",
+            "WarehouseName": "MHINV-01"
+        },
+        {
+            "WarehouseCode": "MHIVN-02",
+            "WarehouseName": "MHINV-02"
+        },
+        {
+            "WarehouseCode": "ORBS-MLD",
+            "WarehouseName": "ORBS - Mould location"
+        },
+        {
+            "WarehouseCode": "ORBS-QMS",
+            "WarehouseName": "ORBS - Quality Management System"
+        },
+        {
+            "WarehouseCode": "ORBS-RM",
+            "WarehouseName": "ORBS Raw material storage location"
+        },
+        {
+            "WarehouseCode": "ORBS-SCP",
+            "WarehouseName": "ORBS Scrap location"
+        },
+        {
+            "WarehouseCode": "ORBS-SFG",
+            "WarehouseName": "ORBS - Semi Finished products"
+        },
+        {
+            "WarehouseCode": "ORBS-WIP",
+            "WarehouseName": "ORBS - Working In Progress"
+        },
+        {
+            "WarehouseCode": "ORD-CHN",
+            "WarehouseName": "ORING DIVISON CHENNAI"
+        },
+        {
+            "WarehouseCode": "PRT-AVS",
+            "WarehouseName": "PROTO AVS Warehouse"
+        },
+        {
+            "WarehouseCode": "PRT-BDS",
+            "WarehouseName": "PROTO BDS Warehouse"
+        },
+        {
+            "WarehouseCode": "QFG -AVS",
+            "WarehouseName": "Quality Finished Goods – AVS"
+        },
+        {
+            "WarehouseCode": "QFG -BDS",
+            "WarehouseName": "Quality Finished Goods – BDS"
+        },
+        {
+            "WarehouseCode": "QHG -AVS",
+            "WarehouseName": "Quality Hold Goods - AVS"
+        },
+        {
+            "WarehouseCode": "QHG -BDS",
+            "WarehouseName": "Quality Hold Goods - BDS"
+        },
+        {
+            "WarehouseCode": "REJ_AVS",
+            "WarehouseName": "REJECTION-AVS"
+        },
+        {
+            "WarehouseCode": "REJ_BDS",
+            "WarehouseName": "REJECTION BDS"
+        },
+        {
+            "WarehouseCode": "SCP_AVS",
+            "WarehouseName": "SCRAP-AVS"
+        },
+        {
+            "WarehouseCode": "SCP_BDS",
+            "WarehouseName": "SCRAP-BDS"
+        },
+        {
+            "WarehouseCode": "TOOL",
+            "WarehouseName": "Production tooling location BDS"
+        },
+        {
+            "WarehouseCode": "TOOLAVS",
+            "WarehouseName": "Production tooling location AVS"
+        },
+        {
+            "WarehouseCode": "WIP-AVS",
+            "WarehouseName": "WIP-AVS-Chennai"
+        },
+        {
+            "WarehouseCode": "WIP-BDS",
+            "WarehouseName": "WIP-BDS-Chennai"
+        }
+    ]
+}
+
+https://192.168.0.144:50000/b1s/v1/StockTransfers
+Batchnumbers:
+{
+"DocDate": "2024-04-20",
+"Comments": "QC Approved WMS Transfer 1 by System",
+"FromWarehouse": "7000-FG",
+"ToWarehouse": "ORBS-MLD",
+"StockTransferLines": [
+{
+"LineNum": 0,
+"ItemCode": "1248-106128",
+"Quantity": 1.0,
+"WarehouseCode": "ORBS-MLD",
+"FromWarehouseCode": "7000-FG",
+"UoMCode": "EA",
+"BaseEntry": 10,
+"BaseLine": 3,
+"BaseType": "1250000001",
+"Price": 0.01777,
+"UnitPrice": 0.01777,
+"UoMEntry": 1,
+"BatchNumbers": [
+{
+"BaseLineNumber": 0,
+"BatchNumberProperty": "484451604",
+"Quantity": 1.0
+}
+]
+}
+]
+}
+
+serial:
+
+Sample StockTransfers JSON:
+{
+    "DocDate": "2025-09-29",
+    "U_EA_CREATEDBy": "admin",
+    "U_EA_Approved": "admin",
+    "Comments": "Serial Item Transfer DOC-0099-2025 - Created by admin, Approved by admin",
+    "FromWarehouse": "7000-FG",
+    "ToWarehouse": "7000-QFG",
+    "StockTransferLines": [
+        {
+            "LineNum": 0,
+            "ItemCode": "MotoS",
+            "Quantity": 5,
+            "WarehouseCode": "7000-QFG",
+            "FromWarehouseCode": "7000-FG",
+            "UoMCode": "Each",
+            "SerialNumbers": [
+                {
+                    "BaseLineNumber": 0,
+                    "InternalSerialNumber": "MotoS1",
+                    "Quantity": 1,
+                    "SystemSerialNumber": "MotoS1",
+                    "ExpiryDate": null,
+                    "ManufactureDate": null,
+                    "ReceptionDate": null,
+                    "WarrantyStart": null,
+                    "WarrantyEnd": null
+                },
+                 {
+                    "BaseLineNumber": 1,
+                    "InternalSerialNumber": "MotoS2",
+                    "Quantity": 1,
+                    "SystemSerialNumber": "MotoS2",
+                    "ExpiryDate": null,
+                    "ManufactureDate": null,
+                    "ReceptionDate": null,
+                    "WarrantyStart": null,
+                    "WarrantyEnd": null
+                },
+                {
+                    "BaseLineNumber": 2,
+                    "InternalSerialNumber": "MotoS3",
+                    "Quantity": 1,
+                    "SystemSerialNumber": "MotoS3",
+                    "ExpiryDate": null,
+                    "ManufactureDate": null,
+                    "ReceptionDate": null,
+                    "WarrantyStart": null,
+                    "WarrantyEnd": null
+                },
+                {
+                    "BaseLineNumber": 3,
+                    "InternalSerialNumber": "MotoS4",
+                    "Quantity": 1,
+                    "SystemSerialNumber": "MotoS4",
+                    "ExpiryDate": null,
+                    "ManufactureDate": null,
+                    "ReceptionDate": null,
+                    "WarrantyStart": null,
+                    "WarrantyEnd": null
+                },
+                {
+                    "BaseLineNumber": 4,
+                    "InternalSerialNumber": "MotoS5",
+                    "Quantity": 1,
+                    "SystemSerialNumber": "MotoS5",
+                    "ExpiryDate": null,
+                    "ManufactureDate": null,
+                    "ReceptionDate": null,
+                    "WarrantyStart": null,
+                    "WarrantyEnd": null
+                }
+            ]
+        }
+    ]
+}

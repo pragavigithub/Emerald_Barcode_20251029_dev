@@ -1,0 +1,43 @@
+-- MySQL Migration: MultiGRN Add Item Feature
+-- Date: 2025-10-14
+-- Purpose: Document schema for manual item addition to MultiGRN module
+-- 
+-- NOTE: No schema changes required - existing tables already support this feature
+-- This file documents the existing schema and how it's used for manual item addition
+
+-- The existing multi_grn_line_selections table supports manual item addition:
+-- 
+-- Table: multi_grn_line_selections
+-- Fields used for manual items:
+--   - po_line_num: Set to -1 for manual items (not from PO line)
+--   - line_status: Set to 'manual' to distinguish from PO items
+--   - inventory_type: Stores 'serial', 'batch', 'quantity_based', or 'standard'
+--   - batch_numbers: JSON field for batch-managed items
+--   - serial_numbers: JSON field for serial-managed items
+--   - bin_location: Optional bin location
+--
+-- Example manual item record:
+-- INSERT INTO multi_grn_line_selections (
+--     po_link_id, po_line_num, item_code, item_description,
+--     ordered_quantity, open_quantity, selected_quantity,
+--     warehouse_code, bin_location, unit_price,
+--     line_status, inventory_type, batch_numbers, serial_numbers
+-- ) VALUES (
+--     1, -1, 'ITEM001', 'Manual Item Description',
+--     10.0, 10.0, 10.0,
+--     '7000-FG', 'BIN-A1', 0.00,
+--     'manual', 'batch',
+--     '[{"BatchNumber":"BATCH001","Quantity":10.0,"ExpiryDate":"2025-12-31"}]',
+--     NULL
+-- );
+
+-- Verification queries:
+-- Check all manual items:
+-- SELECT * FROM multi_grn_line_selections WHERE line_status = 'manual';
+
+-- Check items by inventory type:
+-- SELECT item_code, inventory_type, batch_numbers, serial_numbers 
+-- FROM multi_grn_line_selections 
+-- WHERE inventory_type IN ('batch', 'serial');
+
+-- SCHEMA STATUS: ✓ No changes needed - existing schema fully supports manual item addition

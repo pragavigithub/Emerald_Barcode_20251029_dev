@@ -1,0 +1,2 @@
+# This directory contains incremental MySQL migration files
+# Files should be named: YYYY-MM-DD_HH-MM_description.sql

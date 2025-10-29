@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Sales Order Against Delivery{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Sales Order Against Delivery</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loadSOModal">
+            <i class="fas fa-file-invoice"></i> Load Sales Order
+        </button>
+    </div>
+
+    <!-- Recent Deliveries -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="breadcrumb-item active">My Delivery Notes</h6>
+        </div>
+        <div class="card-body">
+            {% if deliveries %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th width="12%">SO Number</th>
+                            <th width="20%">Customer</th>
+                            <th width="10%">Items</th>
+                            <th width="10%">Status</th>
+                            <th width="15%">Created</th>
+                            <th width="15%">Submitted</th>
+                            <th width="18%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for delivery in deliveries %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('sales_delivery.detail', delivery_id=delivery.id) }}" 
+                                   class="text-decoration-none">
+                                    <strong>{{ delivery.so_doc_num }}</strong>
+                                </a>
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 200px;" title="{{ delivery.card_name }}">
+                                    {{ delivery.card_name }}
+                                </div>
+                                <small class="text-muted">{{ delivery.card_code }}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ delivery.items|length }}</span>
+                            </td>
+                            <td>
+                                {% if delivery.status == 'draft' %}
+                                    <span class="badge bg-warning">Draft</span>
+                                {% elif delivery.status == 'submitted' %}
+                                    <span class="badge bg-success">Submitted</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ delivery.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if delivery.submitted_at %}
+                                    {{ delivery.submitted_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('sales_delivery.detail', delivery_id=delivery.id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% if delivery.status == 'submitted' and delivery.sap_doc_num %}
+                                    <span class="badge bg-info">DN: {{ delivery.sap_doc_num }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle"></i> No delivery notes yet. Click "Load Sales Order" to get started.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Load Sales Order Modal -->
+<div class="modal fade" id="loadSOModal" tabindex="-1" aria-labelledby="loadSOModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loadSOModalLabel">Load Sales Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('sales_delivery.create') }}" id="loadSOForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="so_series" class="form-label">Sales Order Series <span class="text-danger">*</span></label>
+                        <select class="form-select" id="so_series" name="so_series" required>
+                            <option value="">Select series...</option>
+                        </select>
+                        <small class="form-text text-muted">Choose the document series for the Sales Order</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="so_doc_num" class="form-label">Sales Order Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="so_doc_num" name="so_doc_num" 
+                               placeholder="Enter SO document number" required>
+                        <small class="form-text text-muted">Enter the full Sales Order document number</small>
+                    </div>
+                    <div id="loadingSpinner" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading Sales Order from SAP B1...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="loadSOBtn">
+                        <i class="fas fa-download"></i> Load Sales Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loadSOModal = document.getElementById('loadSOModal');
+    const soSeriesSelect = document.getElementById('so_series');
+    const loadSOForm = document.getElementById('loadSOForm');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const loadSOBtn = document.getElementById('loadSOBtn');
+
+    loadSOModal.addEventListener('show.bs.modal', function() {
+        fetch('{{ url_for("sales_delivery.api_get_series") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    soSeriesSelect.innerHTML = '<option value="">Select series...</option>';
+                    data.series.forEach(series => {
+                        const option = document.createElement('option');
+                        option.value = series.Series;
+                        option.textContent = `${series.SeriesName} (${series.Series})`;
+                        soSeriesSelect.appendChild(option);
+                    });
+                } else {
+                    alert('Failed to load series from SAP B1');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading series:', error);
+                alert('Error loading series from SAP B1');
+            });
+    });
+
+    loadSOForm.addEventListener('submit', function(e) {
+        loadingSpinner.classList.remove('d-none');
+        loadSOBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}

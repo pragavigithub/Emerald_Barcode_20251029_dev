@@ -1,0 +1,95 @@
+modules = ["web", "python-3.11", "nodejs-20", "bash"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "postgresql", "tcl", "tk", "unixODBC", "zlib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 39477
+externalPort = 3002
+
+[[ports]]
+localPort = 39857
+externalPort = 6000
+
+[[ports]]
+localPort = 40415
+externalPort = 4200
+
+[[ports]]
+localPort = 40645
+externalPort = 8008
+
+[[ports]]
+localPort = 41019
+externalPort = 3000
+
+[[ports]]
+localPort = 41331
+externalPort = 6800
+
+[[ports]]
+localPort = 41655
+externalPort = 8099
+
+[[ports]]
+localPort = 41657
+externalPort = 3001
+
+[[ports]]
+localPort = 42255
+externalPort = 5173
+
+[[ports]]
+localPort = 44959
+externalPort = 5000
+
+[[ports]]
+localPort = 45013
+externalPort = 8081
+
+[[ports]]
+localPort = 45265
+externalPort = 8080
+
+[[ports]]
+localPort = 45727
+externalPort = 8000
+
+[[ports]]
+localPort = 45929
+externalPort = 3003
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
