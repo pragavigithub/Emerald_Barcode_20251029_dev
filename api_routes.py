@@ -276,3 +276,29 @@ def register_api_routes(app):
                 'success': False,
                 'error': str(e)
             }), 500
+
+    @app.route('/api/get-available-serial-numbers', methods=['GET'])
+    def get_available_serial_numbers():
+        """Get available serial numbers for an item in a specific warehouse"""
+        try:
+            item_code = request.args.get('item_code')
+            warehouse_code = request.args.get('warehouse_code')
+            
+            if not item_code or not warehouse_code:
+                return jsonify({
+                    'success': False,
+                    'error': 'item_code and warehouse_code are required'
+                }), 400
+            
+            sap = SAPIntegration()
+            result = sap.get_available_serial_numbers(item_code, warehouse_code)
+            
+            return jsonify(result)
+                
+        except Exception as e:
+            logging.error(f"Error in get_available_serial_numbers API: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'serial_numbers': []
+            }), 500

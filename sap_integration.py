@@ -3411,7 +3411,27 @@ class SAPIntegration:
 
 
     def create_serial_number_stock_transfer(self, serial_transfer_document):
-        """Create Stock Transfer in SAP B1 for Serial Number Transfer"""
+        """Create Stock Transfer in SAP B1 for Serial Number Transfer
+        
+        Uses SAP B1 StockTransferLines format with SerialNumbers array
+        matching the structure:
+        - BaseLineNumber: References the parent line's LineNum (NOT the serial's index)
+          All serials within a line must have the same BaseLineNumber matching their parent line
+        - InternalSerialNumber: The serial number string
+        - Quantity: Always 1 for each serial-managed item
+        - SystemSerialNumber: The serial number string (same as InternalSerialNumber)
+        
+        Example for a line with 3 serials:
+        {
+            "LineNum": 0,
+            "Quantity": 3,
+            "SerialNumbers": [
+                {"BaseLineNumber": 0, "InternalSerialNumber": "SN001", "Quantity": 1, ...},
+                {"BaseLineNumber": 0, "InternalSerialNumber": "SN002", "Quantity": 1, ...},
+                {"BaseLineNumber": 0, "InternalSerialNumber": "SN003", "Quantity": 1, ...}
+            ]
+        }
+        """
         if not self.ensure_logged_in():
             logging.warning("SAP B1 not available, simulating serial transfer creation")
             import random
@@ -3427,38 +3447,43 @@ class SAPIntegration:
             # Build stock transfer document for serial numbers
             stock_transfer_lines = []
             
-            for index, item in enumerate(serial_transfer_document.items):
-                # Create transfer line with serial numbers
+            for line_index, item in enumerate(serial_transfer_document.items):
+                # Get only validated serial numbers
+                validated_serials = [s for s in item.serial_numbers if s.is_validated]
+                
+                if not validated_serials:
+                    logging.warning(f"Item {item.item_code} has no validated serial numbers, skipping")
+                    continue
+                
+                # Create transfer line with serial numbers array
                 line = {
-                    "LineNum": index,
+                    "LineNum": line_index,
                     "ItemCode": item.item_code,
-                    "Quantity": len(item.serial_numbers),  # Quantity based on serial count
+                    "Quantity": len(validated_serials),  # Total quantity = number of serial numbers
                     "WarehouseCode": item.to_warehouse_code,
                     "FromWarehouseCode": item.from_warehouse_code,
-                    "UoMCode": item.unit_of_measure or ""
+                    "UoMCode": item.unit_of_measure or "Each"
                 }
                 
-                # Add serial numbers to the line
+                # Build SerialNumbers array according to SAP B1 specification
+                # BaseLineNumber must reference the parent line's LineNum, not the serial's index
                 serial_numbers = []
-                for serial in item.serial_numbers:
-                    if serial.is_validated:  # Only include validated serials
-                        serial_info = {
-                            "SystemSerialNumber": serial.system_serial_number or 0,
-                            "InternalSerialNumber": serial.serial_number,
-                            "ManufacturerSerialNumber": serial.serial_number,
-                            "ExpiryDate": serial.expiry_date.isoformat() + "Z" if serial.expiry_date else None,
-                            "ManufactureDate": serial.manufacturing_date.isoformat() + "Z" if serial.manufacturing_date else None,
-                            "ReceptionDate": serial.admission_date.isoformat() + "Z" if serial.admission_date else None,
-                            "WarrantyStart": None,
-                            "WarrantyEnd": None,
-                            "Location": None,
-                            "Notes": None
-                        }
-                        serial_numbers.append(serial_info)
+                for serial in validated_serials:
+                    serial_info = {
+                        "BaseLineNumber": line_index,  # References parent line's LineNum
+                        "InternalSerialNumber": serial.serial_number,
+                        "Quantity": 1,  # Always 1 for serial-managed items
+                        "SystemSerialNumber": serial.serial_number,  # Same as InternalSerialNumber
+                        "ExpiryDate": serial.expiry_date.isoformat() if serial.expiry_date else None,
+                        "ManufactureDate": serial.manufacturing_date.isoformat() if serial.manufacturing_date else None,
+                        "ReceptionDate": serial.admission_date.isoformat() if serial.admission_date else None,
+                        "WarrantyStart": None,
+                        "WarrantyEnd": None
+                    }
+                    serial_numbers.append(serial_info)
                 
-                if serial_numbers:
-                    line["SerialNumbers"] = serial_numbers
-                
+                # Attach serial numbers to the line
+                line["SerialNumbers"] = serial_numbers
                 stock_transfer_lines.append(line)
             
             # Build the stock transfer document
@@ -3938,6 +3963,71 @@ class SAPIntegration:
             return {
                 'success': False,
                 'error': f'Error fetching warehouses: {str(e)}'
+            }
+
+    def get_available_serial_numbers(self, item_code, warehouse_code):
+        """
+        Fetch available serial numbers for an item in a specific warehouse
+        Returns list of serial numbers available for transfer
+        
+        Uses SAP B1 SerialNumberDetails API with filtering
+        """
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, cannot fetch serial numbers")
+            return {
+                'success': False,
+                'error': 'SAP B1 connection unavailable'
+            }
+        
+        try:
+            # Query SerialNumberDetails with filters
+            filter_query = f"ItemCode eq '{item_code}' and WhsCode eq '{warehouse_code}' and Status eq '0'"
+            url = f"{self.base_url}/b1s/v1/SerialNumberDetails?$filter={filter_query}&$select=DistNumber,ItemCode,WhsCode,SystemNumber,Status"
+            
+            logging.info(f"🔍 Fetching available serial numbers for {item_code} in warehouse {warehouse_code}")
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                serial_list = data.get('value', [])
+                
+                # Extract serial numbers
+                serial_numbers = []
+                for serial_data in serial_list:
+                    serial_info = {
+                        'serial_number': serial_data.get('DistNumber', ''),
+                        'internal_serial': serial_data.get('DistNumber', ''),
+                        'system_number': serial_data.get('SystemNumber', 0),
+                        'warehouse_code': serial_data.get('WhsCode', ''),
+                        'item_code': serial_data.get('ItemCode', ''),
+                        'status': serial_data.get('Status', '0')
+                    }
+                    if serial_info['serial_number']:  # Only include if serial number exists
+                        serial_numbers.append(serial_info)
+                
+                logging.info(f"✅ Found {len(serial_numbers)} available serial numbers for {item_code} in {warehouse_code}")
+                
+                return {
+                    'success': True,
+                    'item_code': item_code,
+                    'warehouse_code': warehouse_code,
+                    'serial_numbers': serial_numbers,
+                    'count': len(serial_numbers)
+                }
+            else:
+                logging.error(f"❌ SAP B1 API call failed: {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': f'SAP B1 API call failed: {response.status_code}',
+                    'serial_numbers': []
+                }
+                
+        except Exception as e:
+            logging.error(f"❌ Error fetching serial numbers: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Error fetching serial numbers: {str(e)}',
+                'serial_numbers': []
             }
 
     def logout(self):
