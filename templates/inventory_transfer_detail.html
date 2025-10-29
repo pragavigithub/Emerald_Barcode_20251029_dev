@@ -300,7 +300,7 @@
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Add Item to Transfer</h5>
@@ -308,19 +308,53 @@
             </div>
             <form id="addItemForm" method="POST" action="{{ url_for('inventory_transfer_detail', transfer_id=transfer.id) }}" onsubmit="return handleFormSubmit(event);">
                 <div class="modal-body">
+                    <div id="loading_indicator" class="alert alert-info" style="display: none;">
+                        <i data-feather="loader"></i> Loading...
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="item_code" name="item_code" required onblur="loadBatchNumbers()">
+                            <input type="text" class="form-control" id="item_code" name="item_code" required onblur="validateItemCode()">
+                            <button type="button" class="btn btn-outline-primary" onclick="validateItemCode()">
+                                <i data-feather="check-circle"></i> Validate
+                            </button>
                             <button type="button" class="btn btn-outline-primary" onclick="scanItemCode()">
-                                <i data-feather="camera"></i> Scan Item
+                                <i data-feather="camera"></i> Scan
                             </button>
                         </div>
+                        <div id="item_type_indicator" class="mt-2"></div>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="item_name" class="form-label">Item Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="item_name" name="item_name" readonly>
-                        <small class="text-muted">Auto-filled from SAP B1 when item is scanned</small>
+                        <small class="text-muted">Auto-filled from SAP B1 when item is validated</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="from_warehouse_select" class="form-label">Select Warehouse <span class="text-danger">*</span></label>
+                        <select class="form-select" id="from_warehouse_select" onchange="onWarehouseChange()" required>
+                            <option value="">Validate item code first</option>
+                        </select>
+                        <input type="hidden" id="from_warehouse_code" name="from_warehouse_code" value="{{ transfer.from_warehouse or '' }}">
+                        <small class="text-muted">Warehouse list updates based on item type</small>
+                    </div>
+                    
+                    <div class="mb-3" id="serial_number_group" style="display: none;">
+                        <label for="serial_number" class="form-label">Serial Number <span class="text-danger">*</span></label>
+                        <select class="form-select" id="serial_number" name="serial_number" onchange="onSerialNumberChange()">
+                            <option value="">Select warehouse first</option>
+                        </select>
+                        <small class="text-muted">Serial numbers available in selected warehouse</small>
+                    </div>
+                    
+                    <div class="mb-3" id="batch_number_group" style="display: none;">
+                        <label for="batch_number" class="form-label">Batch Number <span class="text-danger">*</span></label>
+                        <select class="form-select" id="batch_number" name="batch_number" onchange="onBatchNumberChange()">
+                            <option value="">Select warehouse first</option>
+                        </select>
+                        <small class="text-muted" id="batch_info">Batch numbers available in selected warehouse</small>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -1205,4 +1239,5 @@ function printAllTransferQRLabels() {
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/inventory_transfer_item_validation.js') }}"></script>
 {% endblock %}
