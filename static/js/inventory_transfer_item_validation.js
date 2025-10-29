@@ -6,6 +6,14 @@
 let currentItemType = null;
 let warehouseData = [];
 
+// Auto-attach blur event listener when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const itemCodeInput = document.getElementById('item_code');
+    if (itemCodeInput) {
+        itemCodeInput.addEventListener('blur', validateItemCode);
+    }
+});
+
 /**
  * Validate ItemCode and determine item type
  */
@@ -177,7 +185,11 @@ function onWarehouseChange() {
         return;
     }
     
-    document.getElementById('from_warehouse_code').value = selectedWarehouse;
+    // Update the from_warehouse_code field (both hidden and visible)
+    const fromWarehouseCodeFields = document.querySelectorAll('[name="from_warehouse_code"]');
+    fromWarehouseCodeFields.forEach(field => {
+        field.value = selectedWarehouse;
+    });
     
     if (currentItemType === 'serial') {
         populateSerialNumbers(selectedWarehouse);

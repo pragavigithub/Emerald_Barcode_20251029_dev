@@ -315,10 +315,7 @@
                     <div class="mb-3">
                         <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="item_code" name="item_code" required onblur="validateItemCode()">
-                            <button type="button" class="btn btn-outline-primary" onclick="validateItemCode()">
-                                <i data-feather="check-circle"></i> Validate
-                            </button>
+                            <input type="text" class="form-control" id="item_code" name="item_code" required>
                             <button type="button" class="btn btn-outline-primary" onclick="scanItemCode()">
                                 <i data-feather="camera"></i> Scan
                             </button>
@@ -333,11 +330,10 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="from_warehouse_select" class="form-label">Select Warehouse <span class="text-danger">*</span></label>
+                        <label for="from_warehouse_select" class="form-label">From Warehouse <span class="text-danger">*</span></label>
                         <select class="form-select" id="from_warehouse_select" onchange="onWarehouseChange()" required>
                             <option value="">Validate item code first</option>
                         </select>
-                        <input type="hidden" id="from_warehouse_code" name="from_warehouse_code" value="{{ transfer.from_warehouse or '' }}">
                         <small class="text-muted">Warehouse list updates based on item type</small>
                     </div>
                     
@@ -349,13 +345,6 @@
                         <small class="text-muted">Serial numbers available in selected warehouse</small>
                     </div>
                     
-                    <div class="mb-3" id="batch_number_group" style="display: none;">
-                        <label for="batch_number" class="form-label">Batch Number <span class="text-danger">*</span></label>
-                        <select class="form-select" id="batch_number" name="batch_number" onchange="onBatchNumberChange()">
-                            <option value="">Select warehouse first</option>
-                        </select>
-                        <small class="text-muted" id="batch_info">Batch numbers available in selected warehouse</small>
-                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -418,11 +407,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="batch_number_group" style="display: none;">
                         <label for="batch_number" class="form-label">Batch Number</label>
                         <div class="input-group">
-                            <select class="form-select" id="batch_number" name="batch_number">
-                                <option value="">Loading batches...</option>
+                            <select class="form-select" id="batch_number" name="batch_number" onchange="onBatchNumberChange()">
+                                <option value="">Select warehouse first</option>
                             </select>
                             <button type="button" class="btn btn-outline-primary" onclick="loadBatchNumbers()">
                                 <i data-feather="refresh-cw"></i> Refresh
