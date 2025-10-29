@@ -45,8 +45,13 @@ def detail(grpo_id):
     po_data = sap.get_purchase_order(grpo_doc.po_number)
     
     if po_data and 'DocumentLines' in po_data:
-        po_items = po_data.get('DocumentLines', [])
-        logging.info(f"📦 Fetched {len(po_items)} items for PO {grpo_doc.po_number}")
+        all_po_items = po_data.get('DocumentLines', [])
+        # Filter out closed line items - only show open items
+        po_items = [
+            item for item in all_po_items 
+            if item.get('LineStatus') not in ['bost_Close', 'bost_Closed']
+        ]
+        logging.info(f"📦 Fetched {len(all_po_items)} total items for PO {grpo_doc.po_number}, {len(po_items)} open items (filtered out {len(all_po_items) - len(po_items)} closed items)")
     else:
         logging.warning(f"⚠️ Could not fetch PO items for {grpo_doc.po_number}")
     
