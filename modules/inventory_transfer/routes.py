@@ -1856,3 +1856,98 @@ def get_transfer_item_for_qr(item_id):
     except Exception as e:
         logging.error(f"Error generating QR labels for transfer item {item_id}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@transfer_bp.route('/api/validate-itemcode', methods=['POST'])
+@login_required
+def api_validate_itemcode():
+    """
+    API endpoint to validate ItemCode and determine item type (Serial/Batch/Non-Managed)
+    Returns item type and management flags
+    """
+    try:
+        data = request.get_json()
+        item_code = data.get('item_code')
+        
+        if not item_code:
+            return jsonify({'success': False, 'error': 'ItemCode is required'}), 400
+        
+        from sap_integration import SAPIntegration
+        sap_b1 = SAPIntegration()
+        
+        result = sap_b1.validate_item_code(item_code)
+        
+        if result.get('success'):
+            item_type = 'non-managed'
+            if result.get('serial_required'):
+                item_type = 'serial'
+            elif result.get('batch_required'):
+                item_type = 'batch'
+            
+            logging.info(f"✅ ItemCode {item_code} validated as {item_type}")
+            
+            return jsonify({
+                'success': True,
+                'item_code': item_code,
+                'item_type': item_type,
+                'batch_required': result.get('batch_required', False),
+                'serial_required': result.get('serial_required', False),
+                'batch_num': result.get('batch_num', 'N'),
+                'serial_num': result.get('serial_num', 'N')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Item validation failed')
+            }), 400
+            
+    except Exception as e:
+        logging.error(f"Error validating ItemCode: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@transfer_bp.route('/api/get-item-warehouses', methods=['POST'])
+@login_required
+def api_get_item_warehouses():
+    """
+    API endpoint to fetch warehouse details based on item type
+    Returns warehouses, serial/batch numbers, and available quantities
+    """
+    try:
+        data = request.get_json()
+        item_code = data.get('item_code')
+        item_type = data.get('item_type')
+        
+        if not item_code or not item_type:
+            return jsonify({'success': False, 'error': 'ItemCode and ItemType are required'}), 400
+        
+        from sap_integration import SAPIntegration
+        sap_b1 = SAPIntegration()
+        
+        if item_type == 'serial':
+            result = sap_b1.get_serial_managed_item_warehouses(item_code)
+        elif item_type == 'batch':
+            result = sap_b1.get_batch_managed_item_warehouses(item_code)
+        elif item_type == 'non-managed':
+            result = sap_b1.get_non_managed_item_warehouses(item_code)
+        else:
+            return jsonify({'success': False, 'error': f'Invalid item type: {item_type}'}), 400
+        
+        if result.get('success'):
+            warehouses = result.get('warehouses', [])
+            logging.info(f"✅ Retrieved {len(warehouses)} warehouse entries for {item_code}")
+            
+            return jsonify({
+                'success': True,
+                'item_code': item_code,
+                'item_type': item_type,
+                'warehouses': warehouses,
+                'count': len(warehouses)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to fetch warehouse details')
+            }), 400
+            
+    except Exception as e:
+        logging.error(f"Error fetching warehouse details: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
