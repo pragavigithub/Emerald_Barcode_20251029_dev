@@ -1867,7 +1867,7 @@ function waitForQRCode(callback, timeout = 5000) {
     }, 100);
 }
 
-// Generate QR labels for all serial numbers with comprehensive tracking data
+// Generate QR labels for all serial numbers
 function generateSerialQRLabels(itemId, itemCode, itemName) {
     fetch(`/grpo/items/${itemId}/serial-numbers`, {
         credentials: 'same-origin'
@@ -1883,109 +1883,54 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
                 alert('No serial numbers found for this item');
                 return;
             }
-            
+
             const serialNumbers = data.serial_numbers;
-            const grpoDetails = data.grpo_details;
-            
-            // Ask user for number of bags to generate QR labels for
-            const totalSerials = serialNumbers.length;
-            const numberOfBagsInput = prompt(`Enter number of bags/packs to generate QR labels for:\n\n(Total serial numbers: ${totalSerials})`, totalSerials);
-            
-            if (!numberOfBagsInput) {
-                return;
-            }
-            
-            const numberOfBags = parseInt(numberOfBagsInput, 10);
-            if (isNaN(numberOfBags) || numberOfBags <= 0) {
-                alert('Please enter a valid positive number for bags');
-                return;
-            }
-            
-            const bagsToGenerate = Math.min(numberOfBags, totalSerials);
-            
             const modal = new bootstrap.Modal(document.getElementById('serialQRLabelsModal'));
             const container = document.getElementById('serialQRLabelsContainer');
             container.innerHTML = '';
-            
-            let totalLabelsGenerated = 0;
-            
+
             // Wait for QRCode library then generate codes
             waitForQRCode((loaded) => {
-                // Generate QR codes for the specified number of bags
-                for (let i = 0; i < bagsToGenerate && i < serialNumbers.length; i++) {
-                    const serial = serialNumbers[i];
-                    totalLabelsGenerated++;
-                    
-                    // Generate internal ID like GRN/28/0000000001
-                    // Handle missing or invalid GRN date with fallback to current date
-                    let dayOfMonth = '01';
-                    if (grpoDetails.grn_date && grpoDetails.grn_date !== 'N/A') {
-                        const dateParts = grpoDetails.grn_date.split('-');
-                        dayOfMonth = dateParts.length === 3 ? dateParts[2] : String(new Date().getDate()).padStart(2, '0');
-                    } else {
-                        dayOfMonth = String(new Date().getDate()).padStart(2, '0');
-                    }
-                    const internalId = `GRN/${dayOfMonth}/${String(totalLabelsGenerated).padStart(10, '0')}`;
-                    
-                    // Comprehensive QR data with all required fields
-                    const qrData = JSON.stringify({
-                        id: internalId,
-                        po: grpoDetails.po_number,
-                        item: itemCode,
-                        serial: serial.internal_serial_number,
-                        mfg_serial: serial.manufacturer_serial_number || 'N/A',
-                        qty: 1,
-                        pack: `${i + 1} of ${bagsToGenerate}`,
-                        grn_date: grpoDetails.grn_date,
-                        exp_date: serial.expiry_date || 'N/A'
-                    });
-                    
+                serialNumbers.forEach((serial, index) => {
                     const qrDiv = document.createElement('div');
-                    qrDiv.className = 'qr-label-item col-lg-3 col-md-4 col-sm-6 mb-3';
-                    
+                    qrDiv.className = 'qr-label-item col-md-6 mb-3';
+
+                    const qrData = `SN:${itemCode}|${serial.internal_serial_number}|${serial.manufacturer_serial_number || ''}`;
+
                     qrDiv.innerHTML = `
                         <div class="text-center p-3 border rounded">
-                            <h6 class="mb-2"><strong>${itemCode}</strong></h6>
-                            <p class="mb-1 small">${itemName}</p>
+                            <h6>${itemCode} - ${itemName}</h6>
                             <div class="qr-code-container mb-2"></div>
-                            <p class="mb-1 small"><strong>${internalId}</strong></p>
-                            <div class="small text-start">
-                                <strong>PO:</strong> ${grpoDetails.po_number}<br>
-                                <strong>Serial:</strong> ${serial.internal_serial_number}<br>
-                                ${serial.manufacturer_serial_number ? `<strong>MFG Serial:</strong> ${serial.manufacturer_serial_number}<br>` : ''}
-                                <strong>Qty:</strong> 1<br>
-                                <strong>Pack:</strong> ${i + 1} of ${bagsToGenerate}<br>
-                                <strong>GRN Date:</strong> ${grpoDetails.grn_date}<br>
-                                <strong>Exp Date:</strong> ${serial.expiry_date || 'N/A'}
-                            </div>
+                            <p class="mb-1"><strong>Serial: ${serial.internal_serial_number}</strong></p>
+                            ${serial.manufacturer_serial_number ? `<p class="mb-1">MFG: ${serial.manufacturer_serial_number}</p>` : ''}
+                            ${serial.expiry_date ? `<p class="mb-0">Expiry: ${serial.expiry_date}</p>` : ''}
                         </div>
                     `;
                     container.appendChild(qrDiv);
-                    
+
                     // Get QR container for code generation
                     const qrContainer = qrDiv.querySelector('.qr-code-container');
-                    
+
                     // Generate QR code using qrcodejs
                     if (loaded && typeof QRCode !== 'undefined') {
                         try {
                             new QRCode(qrContainer, {
                                 text: qrData,
-                                width: 150,
-                                height: 150,
+                                width: 200,
+                                height: 200,
                                 colorDark: '#000000',
                                 colorLight: '#ffffff',
                                 correctLevel: QRCode.CorrectLevel.H
                             });
                         } catch (error) {
                             console.error('QR generation error:', error);
-                            qrContainer.innerHTML = `<p class="text-danger">Error generating QR</p>`;
+                            qrContainer.innerHTML = `<p class="text-danger">Error generating QR: ${error.message}</p>`;
                         }
                     } else {
-                        qrContainer.innerHTML = `<p class="text-danger">QR library not loaded</p>`;
+                        qrContainer.innerHTML = `<p class="text-danger">QR library not loaded. Please do a hard refresh (Ctrl+Shift+R)</p>`;
                     }
-                }
-                
-                console.log(`Generated ${totalLabelsGenerated} QR code labels for serial items`);
+                });
+
                 modal.show();
             });
         })
@@ -1995,7 +1940,7 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
         });
 }
 
-// Generate QR labels for all batch numbers with multiple labels per batch based on number of bags
+// Generate QR labels for all batch numbers with multiple labels per batch based on quantity
 function generateBatchQRLabels(itemId, itemCode, itemName) {
     fetch(`/grpo/items/${itemId}/batch-numbers`, {
         credentials: 'same-origin'
@@ -2011,53 +1956,30 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                 alert('No batch numbers found for this item');
                 return;
             }
-            
+
             const batchNumbers = data.batch_numbers;
             const grpoDetails = data.grpo_details;
-            
-            // Ask user for number of bags to generate QR labels for
-            const totalQuantity = batchNumbers.reduce((sum, batch) => sum + parseFloat(batch.quantity), 0);
-            const numberOfBagsInput = prompt(`Enter number of bags/packs to generate QR labels for:\n\n(Total received quantity: ${totalQuantity})`, Math.floor(totalQuantity));
-            
-            if (!numberOfBagsInput) {
-                return;
-            }
-            
-            const numberOfBags = parseInt(numberOfBagsInput, 10);
-            if (isNaN(numberOfBags) || numberOfBags <= 0) {
-                alert('Please enter a valid positive number for bags');
-                return;
-            }
-            
-            const bagsToGenerate = numberOfBags;
-            
             const modal = new bootstrap.Modal(document.getElementById('serialQRLabelsModal'));
             const container = document.getElementById('serialQRLabelsContainer');
             container.innerHTML = '';
-            
+
             let totalLabelsGenerated = 0;
-            
+
             // Wait for QRCode library then generate codes
             waitForQRCode((loaded) => {
                 batchNumbers.forEach((batch, batchIndex) => {
-                    const numberOfPacks = bagsToGenerate;
-                    
+                    const receivedQty = Math.floor(batch.quantity);
+                    const numberOfPacks = receivedQty;
+
                     // Generate one QR code per unit/pack of the received quantity
                     for (let packNum = 1; packNum <= numberOfPacks; packNum++) {
                         totalLabelsGenerated++;
-                        
+
                         // Generate internal ID like GRN/25/0002201001
                         // Parse day from ISO date string directly to avoid timezone issues
-                        // Handle missing or invalid GRN date with fallback to current date
-                        let dayOfMonth = '01';
-                        if (grpoDetails.grn_date && grpoDetails.grn_date !== 'N/A') {
-                            const dateParts = grpoDetails.grn_date.split('-');
-                            dayOfMonth = dateParts.length === 3 ? dateParts[2] : String(new Date().getDate()).padStart(2, '0');
-                        } else {
-                            dayOfMonth = String(new Date().getDate()).padStart(2, '0');
-                        }
+                        const dayOfMonth = grpoDetails.grn_date.split('-')[2];
                         const internalId = `GRN/${dayOfMonth}/${String(totalLabelsGenerated).padStart(10, '0')}`;
-                        
+
                         // Comprehensive QR data with all required fields
                         const qrData = JSON.stringify({
                             id: internalId,
@@ -2069,10 +1991,10 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                             grn_date: grpoDetails.grn_date,
                             exp_date: batch.expiry_date || 'N/A'
                         });
-                        
+
                         const qrDiv = document.createElement('div');
-                        qrDiv.className = 'qr-label-item col-lg-3 col-md-4 col-sm-6 mb-3';
-                        
+                        qrDiv.className = 'qr-label-item col-md-4 mb-3';
+
                         qrDiv.innerHTML = `
                             <div class="text-center p-3 border rounded">
                                 <h6 class="mb-2"><strong>${itemCode}</strong></h6>
@@ -2090,10 +2012,10 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                             </div>
                         `;
                         container.appendChild(qrDiv);
-                        
+
                         // Get QR container for code generation
                         const qrContainer = qrDiv.querySelector('.qr-code-container');
-                        
+
                         // Generate QR code using qrcodejs
                         if (loaded && typeof QRCode !== 'undefined') {
                             try {
@@ -2114,7 +2036,7 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                         }
                     }
                 });
-                
+
                 console.log(`Generated ${totalLabelsGenerated} QR code labels`);
                 modal.show();
             });
@@ -2129,7 +2051,7 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
 function printAllQRLabels() {
     const container = document.getElementById('serialQRLabelsContainer');
     const printWindow = window.open('', '_blank', 'width=800,height=600');
-    
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -2140,29 +2062,13 @@ function printAllQRLabels() {
                     font-family: Arial, sans-serif;
                     margin: 0;
                     padding: 20px;
-                    display: flex;
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    gap: 20px;
-                }
-                .row {
-                    display: flex;
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    gap: 20px;
-                    width: 100%;
                 }
                 .qr-label-item {
                     page-break-inside: avoid;
                     margin-bottom: 20px;
-                    flex: 0 0 auto;
-                    max-width: 300px;
                 }
                 .text-center {
                     text-align: center;
-                }
-                .text-start {
-                    text-align: left;
                 }
                 .p-3 {
                     padding: 15px;
@@ -2173,11 +2079,8 @@ function printAllQRLabels() {
                 .rounded {
                     border-radius: 8px;
                 }
-                .mb-1, .mb-2, .mb-3 {
-                    margin-bottom: 10px;
-                }
-                .small {
-                    font-size: 12px;
+                .mb-3 {
+                    margin-bottom: 15px;
                 }
                 h6 {
                     font-size: 16px;
@@ -2209,10 +2112,10 @@ function printAllQRLabels() {
         </body>
         </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
-    
+
     setTimeout(() => {
         printWindow.print();
     }, 500);
@@ -2253,7 +2156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
-                <div id="serialQRLabelsContainer" class="row justify-content-center">
+                <div id="serialQRLabelsContainer" class="row">
                     <!-- QR labels will be generated here -->
                 </div>
             </div>
