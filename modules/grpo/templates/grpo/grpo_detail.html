@@ -1867,7 +1867,7 @@ function waitForQRCode(callback, timeout = 5000) {
     }, 100);
 }
 
-// Generate QR labels for all serial numbers
+// Generate QR labels for all serial numbers with comprehensive details
 function generateSerialQRLabels(itemId, itemCode, itemName) {
     fetch(`/grpo/items/${itemId}/serial-numbers`, {
         credentials: 'same-origin'
@@ -1885,6 +1885,7 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
             }
 
             const serialNumbers = data.serial_numbers;
+            const grpoDetails = data.grpo_details || {};
             const modal = new bootstrap.Modal(document.getElementById('serialQRLabelsModal'));
             const container = document.getElementById('serialQRLabelsContainer');
             container.innerHTML = '';
@@ -1892,18 +1893,43 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
             // Wait for QRCode library then generate codes
             waitForQRCode((loaded) => {
                 serialNumbers.forEach((serial, index) => {
-                    const qrDiv = document.createElement('div');
-                    qrDiv.className = 'qr-label-item col-md-6 mb-3';
+                    const packNum = index + 1;
+                    const totalPacks = serialNumbers.length;
+                    
+                    // Generate comprehensive QR data with all requested fields
+                    const qrDataObj = {
+                        'PO': grpoDetails.po_number || 'N/A',
+                        'SerialNumber': serial.internal_serial_number,
+                        'Qty': 1,
+                        'Pack': `${packNum} of ${totalPacks}`,
+                        'GRN Date': grpoDetails.grn_date || 'N/A',
+                        'Exp Date': serial.expiry_date || 'N/A',
+                        'ItemCode': itemCode,
+                        'ItemDesc': itemName || '',
+                        'id': grpoDetails.doc_number || 'N/A'
+                    };
+                    
+                    // Convert to formatted text for QR code
+                    const qrData = Object.entries(qrDataObj).map(([key, value]) => `${key}: ${value}`).join('\n');
 
-                    const qrData = `SN:${itemCode}|${serial.internal_serial_number}|${serial.manufacturer_serial_number || ''}`;
+                    const qrDiv = document.createElement('div');
+                    qrDiv.className = 'qr-label-item col-md-4 mb-3';
 
                     qrDiv.innerHTML = `
                         <div class="text-center p-3 border rounded">
-                            <h6>${itemCode} - ${itemName}</h6>
+                            <h6 class="mb-2"><strong>${itemCode}</strong></h6>
+                            <p class="mb-1 small">${itemName}</p>
                             <div class="qr-code-container mb-2"></div>
-                            <p class="mb-1"><strong>Serial: ${serial.internal_serial_number}</strong></p>
-                            ${serial.manufacturer_serial_number ? `<p class="mb-1">MFG: ${serial.manufacturer_serial_number}</p>` : ''}
-                            ${serial.expiry_date ? `<p class="mb-0">Expiry: ${serial.expiry_date}</p>` : ''}
+                            <p class="mb-1 small"><strong>${grpoDetails.doc_number || 'N/A'}</strong></p>
+                            <div class="small text-start">
+                                <strong>PO:</strong> ${grpoDetails.po_number || 'N/A'}<br>
+                                <strong>Serial:</strong> ${serial.internal_serial_number}<br>
+                                ${serial.manufacturer_serial_number ? `<strong>MFG:</strong> ${serial.manufacturer_serial_number}<br>` : ''}
+                                <strong>Qty:</strong> 1<br>
+                                <strong>Pack:</strong> ${packNum} of ${totalPacks}<br>
+                                <strong>GRN Date:</strong> ${grpoDetails.grn_date || 'N/A'}<br>
+                                <strong>Exp Date:</strong> ${serial.expiry_date || 'N/A'}
+                            </div>
                         </div>
                     `;
                     container.appendChild(qrDiv);
@@ -1916,8 +1942,8 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
                         try {
                             new QRCode(qrContainer, {
                                 text: qrData,
-                                width: 200,
-                                height: 200,
+                                width: 150,
+                                height: 150,
                                 colorDark: '#000000',
                                 colorLight: '#ffffff',
                                 correctLevel: QRCode.CorrectLevel.H
@@ -1931,6 +1957,7 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
                     }
                 });
 
+                console.log(`Generated ${serialNumbers.length} serial QR code labels`);
                 modal.show();
             });
         })
@@ -1975,22 +2002,24 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                     for (let packNum = 1; packNum <= numberOfPacks; packNum++) {
                         totalLabelsGenerated++;
 
-                        // Generate internal ID like GRN/25/0002201001
-                        // Parse day from ISO date string directly to avoid timezone issues
-                        const dayOfMonth = grpoDetails.grn_date.split('-')[2];
-                        const internalId = `GRN/${dayOfMonth}/${String(totalLabelsGenerated).padStart(10, '0')}`;
+                        // Use proper doc_number from GRPO document
+                        const docNumber = grpoDetails.doc_number || 'N/A';
 
                         // Comprehensive QR data with all required fields
-                        const qrData = JSON.stringify({
-                            id: internalId,
-                            po: grpoDetails.po_number,
-                            item: itemCode,
-                            batch: batch.batch_number,
-                            qty: 1,
-                            pack: `${packNum} of ${numberOfPacks}`,
-                            grn_date: grpoDetails.grn_date,
-                            exp_date: batch.expiry_date || 'N/A'
-                        });
+                        const qrDataObj = {
+                            'PO': grpoDetails.po_number,
+                            'BatchNumber': batch.batch_number,
+                            'Qty': 1,
+                            'Pack': `${packNum} of ${numberOfPacks}`,
+                            'GRN Date': grpoDetails.grn_date,
+                            'Exp Date': batch.expiry_date || 'N/A',
+                            'ItemCode': itemCode,
+                            'ItemDesc': itemName || '',
+                            'id': docNumber
+                        };
+                        
+                        // Convert to formatted text for QR code
+                        const qrData = Object.entries(qrDataObj).map(([key, value]) => `${key}: ${value}`).join('\n');
 
                         const qrDiv = document.createElement('div');
                         qrDiv.className = 'qr-label-item col-md-4 mb-3';
@@ -2000,7 +2029,7 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                                 <h6 class="mb-2"><strong>${itemCode}</strong></h6>
                                 <p class="mb-1 small">${itemName}</p>
                                 <div class="qr-code-container mb-2"></div>
-                                <p class="mb-1 small"><strong>${internalId}</strong></p>
+                                <p class="mb-1 small"><strong>${docNumber}</strong></p>
                                 <div class="small text-start">
                                     <strong>PO:</strong> ${grpoDetails.po_number}<br>
                                     <strong>Batch:</strong> ${batch.batch_number}<br>

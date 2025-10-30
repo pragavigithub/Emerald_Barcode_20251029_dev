@@ -569,6 +569,7 @@ def get_batch_numbers(item_id):
             'grpo_details': {
                 'po_number': grpo.po_number,
                 'grn_date': grpo.created_at.strftime('%Y-%m-%d'),
+                'doc_number': grpo.doc_number or f'GRN/{grpo.id}',
                 'item_code': item.item_code,
                 'item_name': item.item_name,
                 'received_quantity': float(item.quantity)
