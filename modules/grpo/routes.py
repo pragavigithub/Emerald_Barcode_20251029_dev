@@ -94,23 +94,9 @@ def create():
         else:
             logging.warning(f"⚠️ Could not fetch PO details from SAP for PO {po_number}")
         
-        # Generate document number in format GRN/YYYYMMDD/NNNNNNNNNN
-        today_str = datetime.now().strftime('%Y%m%d')
-        
-        # Get the count of GRPOs created today to generate sequence
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        today_count = GRPODocument.query.filter(
-            GRPODocument.created_at >= today_start,
-            GRPODocument.created_at <= today_end
-        ).count()
-        
-        doc_number = f"GRN/{today_str}/{str(today_count + 1).zfill(10)}"
-        
-        # Create new GRPO with supplier details
+        # Create new GRPO without doc_number first (will be generated after commit)
         grpo = GRPODocument(
             po_number=po_number,
-            doc_number=doc_number,
             supplier_code=supplier_code,
             supplier_name=supplier_name,
             user_id=current_user.id,
@@ -118,6 +104,13 @@ def create():
         )
         
         db.session.add(grpo)
+        db.session.flush()  # Flush to get the ID without committing
+        
+        # Generate document number using the auto-incremented ID for guaranteed uniqueness
+        # Format: GRN/YYYYMMDD/NNNNNNNNNN
+        today_str = grpo.created_at.strftime('%Y%m%d')
+        grpo.doc_number = f"GRN/{today_str}/{str(grpo.id).zfill(10)}"
+        
         db.session.commit()
         
         logging.info(f"✅ GRPO created for PO {po_number} by user {current_user.username}")
