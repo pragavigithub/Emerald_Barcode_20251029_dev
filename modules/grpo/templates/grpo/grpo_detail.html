@@ -422,6 +422,18 @@
                     </div>
 
                     <!-- Serial/Batch Management Section -->
+                    <!-- Standard Item Section (Hidden by default, shown for non-batch/non-serial items) -->
+                    <div id="standard_item_section" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="standard_expiration_date" class="form-label">Expiration Date (Optional)</label>
+                                    <input type="date" class="form-control" id="standard_expiration_date" name="standard_expiration_date">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Batch Section (Hidden by default, shown for batch managed items) -->
                     <div id="batch_section" style="display: none;">
                         <div class="row">
@@ -987,16 +999,18 @@ function validateItemCodeFromSAP(itemCode) {
             console.log('success:', data.success);
             
             // Show/hide fields based on validation
-            // Get the batch and serial sections
+            // Get the batch, serial, and standard sections
             const batchSection = document.getElementById('batch_section');
             const serialSection = document.getElementById('serial_section');
+            const standardSection = document.getElementById('standard_item_section');
             
             console.log('🎯 Batch section element:', batchSection);
             console.log('🎯 Serial section element:', serialSection);
+            console.log('🎯 Standard section element:', standardSection);
             
             // Explicit boolean check - only show batch if batch_required is explicitly true
             if (data.batch_required === true) {
-                // Show batch fields, hide serial section
+                // Show batch fields, hide serial and standard sections
                 if (batchSection) {
                     batchSection.style.display = 'block';
                     console.log('✅ Batch section shown (display: block)');
@@ -1005,14 +1019,18 @@ function validateItemCodeFromSAP(itemCode) {
                     serialSection.style.display = 'none';
                     console.log('❌ Serial section hidden (display: none)');
                 }
+                if (standardSection) {
+                    standardSection.style.display = 'none';
+                    console.log('❌ Standard section hidden (display: none)');
+                }
                 
                 // Enable batch selection and load batches
                 document.getElementById('batch_select').disabled = false;
                 loadCascadingBatches();
                 
-                console.log(`✅ Item ${itemCode} is BATCH managed - showing batch fields, hiding serial fields`);
+                console.log(`✅ Item ${itemCode} is BATCH managed - showing batch fields, hiding serial/standard fields`);
             } else if (data.serial_required === true) {
-                // Show serial section, hide batch section completely
+                // Show serial section, hide batch and standard sections
                 if (batchSection) {
                     batchSection.style.display = 'none';
                     console.log('❌ Batch section hidden (display: none)');
@@ -1023,10 +1041,14 @@ function validateItemCodeFromSAP(itemCode) {
                     // Initialize serial number inputs based on quantity
                     initializeSerialInputs();
                 }
+                if (standardSection) {
+                    standardSection.style.display = 'none';
+                    console.log('❌ Standard section hidden (display: none)');
+                }
                 
-                console.log(`✅ Item ${itemCode} is SERIAL managed - showing serial fields, hiding batch fields`);
+                console.log(`✅ Item ${itemCode} is SERIAL managed - showing serial fields, hiding batch/standard fields`);
             } else {
-                // Neither batch nor serial - hide both sections (standard item)
+                // Neither batch nor serial - show standard section, hide batch and serial
                 if (batchSection) {
                     batchSection.style.display = 'none';
                     console.log('❌ Batch section hidden (display: none)');
@@ -1035,8 +1057,12 @@ function validateItemCodeFromSAP(itemCode) {
                     serialSection.style.display = 'none';
                     console.log('❌ Serial section hidden (display: none)');
                 }
+                if (standardSection) {
+                    standardSection.style.display = 'block';
+                    console.log('✅ Standard section shown (display: block)');
+                }
                 
-                console.log(`ℹ️ Item ${itemCode} is NOT batch/serial managed - standard item (no batch/serial required)`);
+                console.log(`ℹ️ Item ${itemCode} is standard item - showing expiry field`);
             }
         })
         .catch(error => {
@@ -1052,13 +1078,15 @@ function validateItemCodeFromSAP(itemCode) {
         });
 }
 
-// Hide all batch/serial sections
+// Hide all batch/serial/standard sections
 function hideBatchSerialSections() {
     const batchSection = document.getElementById('batch_section');
     const serialSection = document.getElementById('serial_section');
+    const standardSection = document.getElementById('standard_item_section');
     
     if (batchSection) batchSection.style.display = 'none';
     if (serialSection) serialSection.style.display = 'none';
+    if (standardSection) standardSection.style.display = 'none';
 }
 
 // Initialize serial number inputs based on quantity
@@ -1074,19 +1102,29 @@ function initializeSerialInputs() {
     if (quantity > 0 && quantity <= 100) { // Limit to 100 serials for UI performance
         for (let i = 0; i < quantity; i++) {
             const serialDiv = document.createElement('div');
-            serialDiv.className = 'mb-2';
+            serialDiv.className = 'mb-3 p-2 border rounded';
             serialDiv.innerHTML = `
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text">#${i + 1}</span>
-                    <input type="text" class="form-control serial-input" 
-                           placeholder="Enter serial number ${i + 1}" 
-                           data-serial-index="${i}"
-                           required>
-                    <button class="btn btn-outline-secondary" type="button" 
-                            onclick="generateSerialBarcode(${i})" 
-                            title="Generate barcode">
-                        <i data-feather="maximize-2"></i>
-                    </button>
+                <div class="row g-2">
+                    <div class="col-md-8">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">#${i + 1}</span>
+                            <input type="text" class="form-control serial-input" 
+                                   placeholder="Enter serial number ${i + 1}" 
+                                   data-serial-index="${i}"
+                                   required>
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    onclick="generateSerialBarcode(${i})" 
+                                    title="Generate barcode">
+                                <i data-feather="maximize-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="date" class="form-control form-control-sm serial-expiry-input" 
+                               placeholder="Expiry date" 
+                               data-expiry-index="${i}"
+                               title="Expiry date (optional)">
+                    </div>
                 </div>
             `;
             serialContainer.appendChild(serialDiv);
@@ -1165,19 +1203,24 @@ function prepareSerialDataForSubmit() {
     // Handle serial managed items
     if (itemValidationResult && itemValidationResult.serial_required) {
         const serialInputs = document.querySelectorAll('.serial-input');
+        const expiryInputs = document.querySelectorAll('.serial-expiry-input');
         const serialNumbers = [];
         
-        for (let input of serialInputs) {
+        for (let i = 0; i < serialInputs.length; i++) {
+            const input = serialInputs[i];
             if (!input.value.trim()) {
                 alert(`Please enter serial number #${parseInt(input.getAttribute('data-serial-index')) + 1}`);
                 input.focus();
                 return false; // Prevent form submission
             }
             
+            const expiryInput = expiryInputs[i];
+            const expiryDate = expiryInput && expiryInput.value ? expiryInput.value : null;
+            
             serialNumbers.push({
                 internal_serial_number: input.value.trim(),
                 manufacturer_serial_number: input.value.trim(),
-                expiry_date: null,
+                expiry_date: expiryDate,
                 manufacture_date: null,
                 notes: ''
             });
@@ -1896,21 +1939,20 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
                     const packNum = index + 1;
                     const totalPacks = serialNumbers.length;
                     
-                    // Generate comprehensive QR data with all requested fields
+                    // Generate comprehensive QR data with all requested fields in JSON format
                     const qrDataObj = {
-                        'PO': grpoDetails.po_number || 'N/A',
+                        'id': grpoDetails.doc_number || 'N/A',
+                        'po': grpoDetails.po_number || 'N/A',
+                        'item': itemCode,
                         'SerialNumber': serial.internal_serial_number,
-                        'Qty': 1,
-                        'Pack': `${packNum} of ${totalPacks}`,
-                        'GRN Date': grpoDetails.grn_date || 'N/A',
-                        'Exp Date': serial.expiry_date || 'N/A',
-                        'ItemCode': itemCode,
-                        'ItemDesc': itemName || '',
-                        'id': grpoDetails.doc_number || 'N/A'
+                        'qty': 1,
+                        'pack': `${packNum} of ${totalPacks}`,
+                        'grn_date': grpoDetails.grn_date || 'N/A',
+                        'exp_date': serial.expiry_date || 'N/A'
                     };
                     
-                    // Convert to formatted text for QR code
-                    const qrData = Object.entries(qrDataObj).map(([key, value]) => `${key}: ${value}`).join('\n');
+                    // Convert to JSON format for QR code
+                    const qrData = JSON.stringify(qrDataObj);
 
                     const qrDiv = document.createElement('div');
                     qrDiv.className = 'qr-label-item col-md-4 mb-3';
@@ -2005,21 +2047,20 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                         // Use proper doc_number from GRPO document
                         const docNumber = grpoDetails.doc_number || 'N/A';
 
-                        // Comprehensive QR data with all required fields
+                        // Comprehensive QR data with all required fields in JSON format
                         const qrDataObj = {
-                            'PO': grpoDetails.po_number,
-                            'BatchNumber': batch.batch_number,
-                            'Qty': 1,
-                            'Pack': `${packNum} of ${numberOfPacks}`,
-                            'GRN Date': grpoDetails.grn_date,
-                            'Exp Date': batch.expiry_date || 'N/A',
-                            'ItemCode': itemCode,
-                            'ItemDesc': itemName || '',
-                            'id': docNumber
+                            'id': docNumber,
+                            'po': grpoDetails.po_number,
+                            'item': itemCode,
+                            'batch': batch.batch_number,
+                            'qty': 1,
+                            'pack': `${packNum} of ${numberOfPacks}`,
+                            'grn_date': grpoDetails.grn_date,
+                            'exp_date': batch.expiry_date || 'N/A'
                         };
                         
-                        // Convert to formatted text for QR code
-                        const qrData = Object.entries(qrDataObj).map(([key, value]) => `${key}: ${value}`).join('\n');
+                        // Convert to JSON format for QR code
+                        const qrData = JSON.stringify(qrDataObj);
 
                         const qrDiv = document.createElement('div');
                         qrDiv.className = 'qr-label-item col-md-4 mb-3';

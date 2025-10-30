@@ -533,7 +533,15 @@ def get_serial_numbers(item_id):
         return jsonify({
             'success': True,
             'serial_numbers': serial_numbers,
-            'count': len(serial_numbers)
+            'count': len(serial_numbers),
+            'grpo_details': {
+                'po_number': grpo.po_number,
+                'grn_date': grpo.created_at.strftime('%Y-%m-%d'),
+                'doc_number': grpo.doc_number or f'GRN/{grpo.id}',
+                'item_code': item.item_code,
+                'item_name': item.item_name,
+                'received_quantity': float(item.quantity)
+            }
         })
         
     except Exception as e:
