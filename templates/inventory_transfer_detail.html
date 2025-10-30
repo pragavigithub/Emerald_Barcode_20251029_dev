@@ -312,6 +312,16 @@
                         <i data-feather="loader"></i> Loading...
                     </div>
                     
+                    <div class="alert alert-primary d-flex justify-content-between align-items-center">
+                        <div>
+                            <i data-feather="info"></i>
+                            <strong>Quick Add:</strong> Scan GRN QR label to auto-fill all fields
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" onclick="showQRScanner()">
+                            <i data-feather="maximize"></i> Scan QR Label
+                        </button>
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="item_code" class="form-label">Item Code <span class="text-danger">*</span></label>
                         <div class="input-group">
@@ -1227,6 +1237,257 @@ function printAllTransferQRLabels() {
         </div>
     </div>
 </div>
+
+<!-- QR Scanner Modal for Item Code -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrScannerModalLabel">
+                    <i data-feather="camera"></i> Scan QR Label
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    <strong>Scan GRN QR Label</strong>: Position the QR code in front of the camera or upload an image
+                </div>
+                
+                <div class="d-flex gap-3 mb-3">
+                    <button type="button" class="btn btn-primary flex-fill" id="startCameraScanBtn">
+                        <i data-feather="camera"></i> Use Camera
+                    </button>
+                    <button type="button" class="btn btn-secondary flex-fill" id="uploadQRBtn">
+                        <i data-feather="upload"></i> Upload QR Image
+                    </button>
+                </div>
+                
+                <input type="file" id="qrFileInput" accept="image/*" style="display: none;">
+                
+                <div id="qrReaderContainer" style="display: none;">
+                    <div id="qr-reader" style="width: 100%; min-height: 300px;"></div>
+                </div>
+                
+                <div id="qrScanResult" class="mt-3" style="display: none;">
+                    <div class="alert alert-success">
+                        <h6>QR Code Scanned Successfully!</h6>
+                        <pre id="qrDataDisplay" class="mb-0 mt-2" style="font-size: 12px; background: #f8f9fa; padding: 10px; border-radius: 5px;"></pre>
+                    </div>
+                </div>
+                
+                <div id="qrScanError" class="mt-3" style="display: none;">
+                    <div class="alert alert-danger">
+                        <h6>Scan Error</h6>
+                        <p id="qrErrorMessage" class="mb-0"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let html5QrCode = null;
+
+function showQRScanner() {
+    const modal = new bootstrap.Modal(document.getElementById('qrScannerModal'));
+    modal.show();
+    
+    document.getElementById('qrReaderContainer').style.display = 'none';
+    document.getElementById('qrScanResult').style.display = 'none';
+    document.getElementById('qrScanError').style.display = 'none';
+}
+
+document.getElementById('startCameraScanBtn').addEventListener('click', function() {
+    startCameraQRScan();
+});
+
+document.getElementById('uploadQRBtn').addEventListener('click', function() {
+    document.getElementById('qrFileInput').click();
+});
+
+document.getElementById('qrFileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        scanQRFromFile(file);
+    }
+});
+
+function startCameraQRScan() {
+    document.getElementById('qrReaderContainer').style.display = 'block';
+    document.getElementById('qrScanResult').style.display = 'none';
+    document.getElementById('qrScanError').style.display = 'none';
+    
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+    }
+    
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+    };
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onQRScanSuccess,
+        onQRScanError
+    ).catch(err => {
+        console.error('Camera start error:', err);
+        showQRError('Failed to start camera: ' + err.message);
+    });
+}
+
+function scanQRFromFile(file) {
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+    }
+    
+    document.getElementById('qrScanResult').style.display = 'none';
+    document.getElementById('qrScanError').style.display = 'none';
+    
+    html5QrCode.scanFile(file, true)
+        .then(decodedText => {
+            onQRScanSuccess(decodedText);
+        })
+        .catch(err => {
+            console.error('File scan error:', err);
+            showQRError('Failed to scan QR code from image: ' + err.message);
+        });
+}
+
+function onQRScanSuccess(decodedText) {
+    console.log('QR Code decoded:', decodedText);
+    
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop();
+    }
+    
+    document.getElementById('qrDataDisplay').textContent = decodedText;
+    document.getElementById('qrScanResult').style.display = 'block';
+    document.getElementById('qrScanError').style.display = 'none';
+    
+    try {
+        const qrData = JSON.parse(decodedText);
+        processQRData(qrData);
+    } catch (e) {
+        console.error('JSON parse error:', e);
+        showQRError('QR code does not contain valid JSON data. Scanned text: ' + decodedText);
+    }
+}
+
+function onQRScanError(error) {
+    console.warn('QR scan error (normal during scanning):', error);
+}
+
+function showQRError(message) {
+    document.getElementById('qrErrorMessage').textContent = message;
+    document.getElementById('qrScanError').style.display = 'block';
+    document.getElementById('qrScanResult').style.display = 'none';
+}
+
+function processQRData(qrData) {
+    console.log('Processing QR data:', qrData);
+    
+    const itemCode = qrData.item || qrData.item_code || '';
+    const batchNumber = qrData.batch || qrData.batch_number || '';
+    const serialNumber = qrData.serial || qrData.serial_number || '';
+    const quantity = qrData.qty || qrData.quantity || 1;
+    const expiryDate = qrData.exp_date || qrData.expiry_date || '';
+    
+    const qrModal = bootstrap.Modal.getInstance(document.getElementById('qrScannerModal'));
+    if (qrModal) {
+        qrModal.hide();
+    }
+    
+    setTimeout(() => {
+        const addItemModal = new bootstrap.Modal(document.getElementById('addItemModal'));
+        addItemModal.show();
+        
+        const itemCodeField = document.getElementById('item_code');
+        if (itemCodeField && itemCode) {
+            itemCodeField.value = itemCode;
+            
+            const quantityField = document.getElementById('quantity');
+            if (quantityField) {
+                quantityField.value = quantity;
+            }
+            
+            if (typeof validateItemCodeFromSAP === 'function') {
+                validateItemCodeFromSAP(itemCode, function(success) {
+                    if (success && batchNumber) {
+                        setTimeout(() => {
+                            const batchField = document.getElementById('batch_number');
+                            if (batchField && batchField.options.length > 1) {
+                                const batchOption = Array.from(batchField.options).find(
+                                    opt => opt.text.includes(batchNumber)
+                                );
+                                if (batchOption) {
+                                    batchField.value = batchOption.value;
+                                    batchField.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        }, 1500);
+                    }
+                    
+                    if (success && serialNumber) {
+                        setTimeout(() => {
+                            const serialField = document.getElementById('serial_number');
+                            if (serialField && serialField.options.length > 1) {
+                                const serialOption = Array.from(serialField.options).find(
+                                    opt => opt.text.includes(serialNumber) || opt.value === serialNumber
+                                );
+                                if (serialOption) {
+                                    serialField.value = serialOption.value;
+                                    serialField.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        }, 1500);
+                    }
+                });
+            } else {
+                console.warn('validateItemCodeFromSAP function not found, falling back to blur event');
+                itemCodeField.dispatchEvent(new Event('blur'));
+            }
+        }
+        
+        feather.replace();
+    }, 300);
+}
+
+document.getElementById('qrScannerModal').addEventListener('hidden.bs.modal', function () {
+    stopQRScanner();
+});
+
+function stopQRScanner() {
+    if (html5QrCode) {
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop()
+                .then(() => {
+                    console.log('QR scanner stopped successfully');
+                    html5QrCode.clear();
+                })
+                .catch(err => {
+                    console.error('Error stopping scanner:', err);
+                    try {
+                        html5QrCode.clear();
+                    } catch (clearErr) {
+                        console.error('Error clearing scanner:', clearErr);
+                    }
+                });
+        }
+    }
+    
+    document.getElementById('qrReaderContainer').style.display = 'none';
+    document.getElementById('qrScanResult').style.display = 'none';
+    document.getElementById('qrScanError').style.display = 'none';
+    document.getElementById('qrFileInput').value = '';
+}
+</script>
 
 <script src="{{ url_for('static', filename='js/inventory_transfer_item_validation.js') }}"></script>
 {% endblock %}
