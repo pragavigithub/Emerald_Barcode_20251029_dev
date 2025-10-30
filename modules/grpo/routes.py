@@ -900,27 +900,25 @@ def validate_serial_unique(serial_number):
 @login_required
 def generate_barcode_labels_api():
     """
-    API endpoint to generate barcode labels for batch items
-    Accepts: grpo_id, batch_number, expiration_date, number_of_bags, item_code, item_name
-    Returns: HTML with printable barcode labels or JSON with label data
+    API endpoint to generate QR code labels for GRPO items (Serial, Batch, and Non-managed)
+    Accepts: grpo_id, item_id, label_type ('serial', 'batch', or 'regular')
+    Returns: JSON with label data including all requested fields
     """
     try:
         data = request.get_json()
         
         grpo_id = data.get('grpo_id')
-        batch_number = data.get('batch_number')
-        expiration_date = data.get('expiration_date')
-        number_of_bags = data.get('number_of_bags')
-        item_code = data.get('item_code')
-        item_name = data.get('item_name')
+        item_id = data.get('item_id')
+        label_type = data.get('label_type', 'batch')  # 'serial', 'batch', or 'regular'
         
-        if not all([grpo_id, batch_number, expiration_date, number_of_bags, item_code]):
+        if not all([grpo_id, item_id]):
             return jsonify({
                 'success': False,
-                'error': 'Missing required parameters: grpo_id, batch_number, expiration_date, number_of_bags, item_code'
+                'error': 'Missing required parameters: grpo_id, item_id'
             }), 400
         
         grpo_doc = GRPODocument.query.get_or_404(grpo_id)
+        item = GRPOItem.query.get_or_404(item_id)
         
         if grpo_doc.user_id != current_user.id and current_user.role not in ['admin', 'manager']:
             return jsonify({
@@ -928,27 +926,126 @@ def generate_barcode_labels_api():
                 'error': 'Access denied'
             }), 403
         
-        number_of_bags = int(number_of_bags)
-        if number_of_bags < 1 or number_of_bags > 1000:
+        if item.grpo_id != grpo_id:
             return jsonify({
                 'success': False,
-                'error': 'Number of bags must be between 1 and 1000'
+                'error': 'Item does not belong to this GRPO'
             }), 400
         
         grn_date = grpo_doc.created_at.strftime('%Y-%m-%d')
+        doc_number = grpo_doc.doc_number or f"GRN/{grpo_doc.id}"
+        po_number = grpo_doc.po_number
         
         labels = []
-        for i in range(1, number_of_bags + 1):
+        
+        if label_type == 'serial':
+            # Generate labels for serial-managed items
+            serial_numbers = item.serial_numbers
+            total_serials = len(serial_numbers)
+            
+            for idx, serial in enumerate(serial_numbers, start=1):
+                qr_data = {
+                    'PO': po_number,
+                    'SerialNumber': serial.internal_serial_number,
+                    'Qty': 1,
+                    'Pack': f"{idx} of {total_serials}",
+                    'GRN Date': grn_date,
+                    'Exp Date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
+                    'ItemCode': item.item_code,
+                    'ItemDesc': item.item_name or '',
+                    'id': doc_number
+                }
+                
+                # Convert to QR code friendly format
+                qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
+                qr_code_image = generate_barcode(qr_text)
+                
+                label = {
+                    'sequence': idx,
+                    'total': total_serials,
+                    'pack_text': f"{idx} of {total_serials}",
+                    'po_number': po_number,
+                    'serial_number': serial.internal_serial_number,
+                    'quantity': 1,
+                    'grn_date': grn_date,
+                    'expiration_date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
+                    'item_code': item.item_code,
+                    'item_name': item.item_name or '',
+                    'doc_number': doc_number,
+                    'qr_code_image': qr_code_image,
+                    'qr_data': qr_data
+                }
+                labels.append(label)
+        
+        elif label_type == 'batch':
+            # Generate labels for batch-managed items
+            batch_numbers = item.batch_numbers
+            total_batches = len(batch_numbers)
+            
+            for idx, batch in enumerate(batch_numbers, start=1):
+                qr_data = {
+                    'PO': po_number,
+                    'BatchNumber': batch.batch_number,
+                    'Qty': float(batch.quantity),
+                    'Pack': f"{idx} of {total_batches}",
+                    'GRN Date': grn_date,
+                    'Exp Date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
+                    'ItemCode': item.item_code,
+                    'ItemDesc': item.item_name or '',
+                    'id': doc_number
+                }
+                
+                # Convert to QR code friendly format
+                qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
+                qr_code_image = generate_barcode(qr_text)
+                
+                label = {
+                    'sequence': idx,
+                    'total': total_batches,
+                    'pack_text': f"{idx} of {total_batches}",
+                    'po_number': po_number,
+                    'batch_number': batch.batch_number,
+                    'quantity': float(batch.quantity),
+                    'grn_date': grn_date,
+                    'expiration_date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
+                    'item_code': item.item_code,
+                    'item_name': item.item_name or '',
+                    'doc_number': doc_number,
+                    'qr_code_image': qr_code_image,
+                    'qr_data': qr_data
+                }
+                labels.append(label)
+        
+        else:  # Regular non-serial/non-batch items
+            # Generate a single label for non-managed items
+            qr_data = {
+                'PO': po_number,
+                'ItemCode': item.item_code,
+                'Qty': float(item.quantity),
+                'Pack': '1 of 1',
+                'GRN Date': grn_date,
+                'Exp Date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
+                'ItemDesc': item.item_name or '',
+                'id': doc_number
+            }
+            
+            # Convert to QR code friendly format
+            qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
+            qr_code_image = generate_barcode(qr_text)
+            
             label = {
-                'sequence': i,
-                'total': number_of_bags,
-                'sequence_text': f"{i} of {number_of_bags}",
-                'item_code': item_code,
-                'item_name': item_name or '',
-                'batch_number': batch_number,
+                'sequence': 1,
+                'total': 1,
+                'pack_text': '1 of 1',
+                'po_number': po_number,
+                'quantity': float(item.quantity),
                 'grn_date': grn_date,
-                'expiration_date': expiration_date,
-                'barcode_data': f"{item_code}-{batch_number}-{i}"
+                'expiration_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
+                'item_code': item.item_code,
+                'item_name': item.item_name or '',
+                'doc_number': doc_number,
+                'qr_code_image': qr_code_image,
+                'qr_data': qr_data
             }
             labels.append(label)
         
@@ -956,13 +1053,15 @@ def generate_barcode_labels_api():
             'success': True,
             'labels': labels,
             'grpo_id': grpo_id,
-            'total_labels': number_of_bags
+            'item_id': item_id,
+            'label_type': label_type,
+            'total_labels': len(labels)
         })
         
     except ValueError as e:
         return jsonify({
             'success': False,
-            'error': f'Invalid number format: {str(e)}'
+            'error': f'Invalid value: {str(e)}'
         }), 400
     except Exception as e:
         logging.error(f"Error generating barcode labels: {str(e)}")
