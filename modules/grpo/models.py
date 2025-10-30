@@ -12,6 +12,7 @@ class GRPODocument(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     po_number = db.Column(db.String(50), nullable=False)
+    doc_number = db.Column(db.String(50))  # GRN/YYYYMMDD/NNNNNNNNNN format
     supplier_code = db.Column(db.String(20))
     supplier_name = db.Column(db.String(100))
     warehouse_code = db.Column(db.String(10))
