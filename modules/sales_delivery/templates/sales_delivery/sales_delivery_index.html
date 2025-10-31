@@ -106,9 +106,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="so_doc_num" class="form-label">Sales Order Number <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="so_doc_num" name="so_doc_num" 
-                               placeholder="Enter SO document number" required>
-                        <small class="form-text text-muted">Enter the full Sales Order document number</small>
+                        <select class="form-select" id="so_doc_num" name="so_doc_num" required disabled>
+                            <option value="">Select series first</option>
+                        </select>
+                        <small class="form-text text-muted">Select the sales order series first</small>
                     </div>
                     <div id="loadingSpinner" class="text-center d-none">
                         <div class="spinner-border text-primary" role="status">
@@ -147,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.series.forEach(series => {
                         const option = document.createElement('option');
                         option.value = series.Series;
-                        option.textContent = `${series.SeriesName} (${series.Series})`;
+                        option.textContent = `${series.Name} (${series.Series})`;
                         soSeriesSelect.appendChild(option);
                     });
                 } else {
@@ -159,6 +160,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Error loading series from SAP B1');
             });
     });
+
+    document.getElementById('so_series').addEventListener('change', function() {
+        const series = this.value;
+        const soDocNumSelect = document.getElementById('so_doc_num');
+
+        if (series) {
+            loadSODocNumbers(series);
+        } else {
+            soDocNumSelect.innerHTML = '<option value="">Select series first</option>';
+            soDocNumSelect.disabled = true;
+        }
+    });
+
+    function loadSODocNumbers(series) {
+        const soDocNumSelect = document.getElementById('so_doc_num');
+        soDocNumSelect.innerHTML = '<option value="">Loading...</option>';
+        soDocNumSelect.disabled = true;
+
+        fetch(`{{ url_for("sales_delivery.api_get_open_so_docnums") }}?series=${series}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.documents && data.documents.length > 0) {
+                    soDocNumSelect.innerHTML = '<option value="">Select Document Number</option>';
+                    data.documents.forEach(doc => {
+                        const option = document.createElement('option');
+                        option.value = doc.DocNum;
+                        option.textContent = `${doc.DocNum} - ${doc.CardName} (${doc.CardCode})`;
+                        option.setAttribute('data-doc-entry', doc.DocEntry);
+                        soDocNumSelect.appendChild(option);
+                    });
+                    soDocNumSelect.disabled = false;
+                } else {
+                    soDocNumSelect.innerHTML = '<option value="">No Open Sales Orders Found</option>';
+                    soDocNumSelect.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading SO document numbers:', error);
+                soDocNumSelect.innerHTML = '<option value="">Error Loading Documents</option>';
+                soDocNumSelect.disabled = true;
+            });
+    }
 
     loadSOForm.addEventListener('submit', function(e) {
         loadingSpinner.classList.remove('d-none');

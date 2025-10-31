@@ -580,6 +580,66 @@ class SAPIntegration:
             logging.error(f"Error fetching SO DocEntry: {str(e)}")
             return None
 
+    def get_open_so_docnums(self, series):
+        """Get open Sales Order document numbers for a specific series from SAP B1"""
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, returning empty list")
+            return []
+
+        # Try Method 1: SQL Query Get_Open_SO_DocNum (preferred - uses custom SAP query)
+        try:
+            url_sql = f"{self.base_url}/b1s/v1/SQLQueries('Get_Open_SO_DocNum')/List"
+            body = {"ParamList": f"series='{series}'"}
+            
+            logging.debug(f"🔍 Attempting SQL query Get_Open_SO_DocNum: {url_sql} with series: {series}")
+            
+            response = self.session.post(url_sql, json=body, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                documents = data.get('value', [])
+                
+                logging.info(f"✅ Retrieved {len(documents)} open SOs from series {series} (SQL Query)")
+                return documents
+            else:
+                logging.info(f"SQL query Get_Open_SO_DocNum not available ({response.status_code}), trying OData fallback")
+                
+        except Exception as e:
+            logging.debug(f"SQL query Get_Open_SO_DocNum failed: {str(e)}, trying OData fallback")
+
+        # Try Method 2: OData filter (fallback)
+        try:
+            url = f"{self.base_url}/b1s/v1/Orders?$filter=Series eq {series} and DocumentStatus eq 'bost_Open'&$select=DocEntry,DocNum,CardCode,CardName,Series,DocStatus&$orderby=DocEntry desc"
+            logging.debug(f"Fetching open SOs with OData filter: {url}")
+            
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                documents = data.get('value', [])
+                
+                # Format to match SQL query output
+                formatted_docs = [
+                    {
+                        'DocEntry': doc.get('DocEntry'),
+                        'DocNum': doc.get('DocNum'),
+                        'CardCode': doc.get('CardCode'),
+                        'CardName': doc.get('CardName'),
+                        'DocStatus': doc.get('DocStatus', 'O')
+                    }
+                    for doc in documents
+                ]
+                
+                logging.info(f"✅ Retrieved {len(formatted_docs)} open SOs from series {series} (OData)")
+                return formatted_docs
+            else:
+                logging.warning(f"Failed to get open SOs: {response.status_code} - {response.text}")
+                return []
+                
+        except Exception as e:
+            logging.error(f"Error fetching open SOs for series {series}: {str(e)}")
+            return []
+
     def get_sales_order_by_doc_entry(self, doc_entry):
         """Get Sales Order details from SAP B1 using DocEntry - only open documents and lines"""
         if not self.ensure_logged_in():

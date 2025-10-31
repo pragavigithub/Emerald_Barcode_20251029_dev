@@ -117,6 +117,21 @@ def api_get_series():
     return jsonify({'success': True, 'series': series_list})
 
 
+@sales_delivery_bp.route('/api/get_open_so_docnums')
+@login_required
+def api_get_open_so_docnums():
+    """Get open Sales Order document numbers for a specific series"""
+    series = request.args.get('series')
+    
+    if not series:
+        return jsonify({'success': False, 'error': 'Series is required'})
+    
+    sap = SAPIntegration()
+    documents = sap.get_open_so_docnums(series)
+    
+    return jsonify({'success': True, 'documents': documents})
+
+
 @sales_delivery_bp.route('/api/validate_item', methods=['POST'])
 @login_required
 def api_validate_item():
