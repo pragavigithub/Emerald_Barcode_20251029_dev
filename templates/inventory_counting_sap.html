@@ -34,7 +34,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="documentNumber" class="form-label">Document Number <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="documentNumber" placeholder="Enter document number" required>
+                            <select class="form-select" id="documentNumber" required disabled>
+                                <option value="">Select series first</option>
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -196,12 +198,55 @@ async function loadDocumentSeries() {
                 option.textContent = series.SeriesName;
                 seriesSelect.appendChild(option);
             });
+            
+            // Add event listener for series change
+            seriesSelect.addEventListener('change', function() {
+                const selectedSeries = this.value;
+                const docNumSelect = document.getElementById('documentNumber');
+                
+                if (selectedSeries) {
+                    loadOpenDocuments(selectedSeries);
+                } else {
+                    docNumSelect.innerHTML = '<option value="">Select series first</option>';
+                    docNumSelect.disabled = true;
+                }
+            });
         } else {
             seriesSelect.innerHTML = '<option value="">No series available</option>';
         }
     } catch (error) {
         console.error('Error loading document series:', error);
         document.getElementById('documentSeries').innerHTML = '<option value="">Error loading series</option>';
+    }
+}
+
+async function loadOpenDocuments(series) {
+    const docNumSelect = document.getElementById('documentNumber');
+    docNumSelect.innerHTML = '<option value="">Loading...</option>';
+    docNumSelect.disabled = true;
+    
+    try {
+        const response = await fetch(`/api/get-open-invcnt-docnums?series=${series}`);
+        const data = await response.json();
+        
+        if (data.success && data.documents && data.documents.length > 0) {
+            docNumSelect.innerHTML = '<option value="">Select Document Number</option>';
+            data.documents.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.DocNum;
+                option.textContent = `${doc.DocNum} - ${doc.SeriesName} (${new Date(doc.CountDate).toLocaleDateString()})`;
+                option.setAttribute('data-doc-entry', doc.DocEntry);
+                docNumSelect.appendChild(option);
+            });
+            docNumSelect.disabled = false;
+        } else {
+            docNumSelect.innerHTML = '<option value="">No Open Documents Found</option>';
+            docNumSelect.disabled = true;
+        }
+    } catch (error) {
+        console.error('Error loading open documents:', error);
+        docNumSelect.innerHTML = '<option value="">Error Loading Documents</option>';
+        docNumSelect.disabled = true;
     }
 }
 

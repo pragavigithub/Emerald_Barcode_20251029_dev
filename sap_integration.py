@@ -865,6 +865,77 @@ class SAPIntegration:
             logging.error(f"Error fetching Inventory Counting DocEntry: {str(e)}")
             return None
 
+    def get_open_invcnt_docnums(self, series):
+        """Get open Inventory Counting document numbers for a specific series from SAP B1"""
+        if not self.ensure_logged_in():
+            logging.warning("SAP B1 not available, returning empty list")
+            return []
+
+        # Try Method 1: SQL Query Get_Open_INVCNT_DocNum (preferred - uses custom SAP query)
+        try:
+            url_sql = f"{self.base_url}/b1s/v1/SQLQueries('Get_Open_INVCNT_DocNum')/List"
+            body = {"ParamList": f"series='{series}'"}
+            
+            logging.debug(f"🔍 Attempting SQL query Get_Open_INVCNT_DocNum: {url_sql} with series: {series}")
+            
+            response = self.session.post(url_sql, json=body, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                documents = data.get('value', [])
+                
+                logging.info(f"✅ Retrieved {len(documents)} open inventory counting documents from series {series} (SQL Query)")
+                return documents
+            else:
+                logging.info(f"SQL query Get_Open_INVCNT_DocNum not available ({response.status_code}), trying OData fallback")
+                
+        except Exception as e:
+            logging.debug(f"SQL query Get_Open_INVCNT_DocNum failed: {str(e)}, trying OData fallback")
+
+        # Try Method 2: OData filter (fallback)
+        try:
+            url = f"{self.base_url}/b1s/v1/InventoryCounting?$filter=Series eq {series} and DocumentStatus eq 'cdsOpen'&$select=DocumentEntry,DocumentNumber,CountDate,DocumentStatus&$orderby=CountDate desc,DocumentNumber"
+            logging.debug(f"Fetching open inventory counting documents with OData filter: {url}")
+            
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                documents = data.get('value', [])
+                
+                # Get series name for the series
+                series_name = f"Series {series}"
+                try:
+                    series_url = f"{self.base_url}/b1s/v1/SeriesService_GetDocumentSeries?DocumentTypeParams={{'Document':1250000045,'Series':{series}}}"
+                    series_response = self.session.get(series_url, timeout=10)
+                    if series_response.status_code == 200:
+                        series_data = series_response.json()
+                        series_name = series_data.get('Name', series_name)
+                except:
+                    pass
+                
+                # Format to match SQL query output
+                formatted_docs = [
+                    {
+                        'DocEntry': doc.get('DocumentEntry'),
+                        'DocNum': doc.get('DocumentNumber'),
+                        'SeriesName': series_name,
+                        'CountDate': doc.get('CountDate'),
+                        'Status': 'O'  # Open status
+                    }
+                    for doc in documents
+                ]
+                
+                logging.info(f"✅ Retrieved {len(formatted_docs)} open inventory counting documents from series {series} (OData)")
+                return formatted_docs
+            else:
+                logging.warning(f"Failed to get open inventory counting documents: {response.status_code} - {response.text}")
+                return []
+                
+        except Exception as e:
+            logging.error(f"Error fetching open inventory counting documents for series {series}: {str(e)}")
+            return []
+
     def get_inventory_counting_by_doc_entry(self, doc_entry):
         """Get inventory counting document details from SAP B1 using DocEntry"""
         if not self.ensure_logged_in():

@@ -339,6 +339,34 @@ def get_invcnt_docentry():
             'error': str(e)
         }), 500
 
+@app.route('/api/get-open-invcnt-docnums', methods=['GET'])
+def get_open_invcnt_docnums():
+    """Get open Inventory Counting document numbers for a specific series"""
+    try:
+        series = request.args.get('series')
+        
+        if not series:
+            return jsonify({
+                'success': False,
+                'error': 'Series is required'
+            }), 400
+        
+        sap = SAPIntegration()
+        documents = sap.get_open_invcnt_docnums(series)
+        
+        return jsonify({
+            'success': True,
+            'documents': documents
+        })
+            
+    except Exception as e:
+        logging.error(f"Error in get_open_invcnt_docnums API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'documents': []
+        }), 500
+
 @app.route('/api/get-invcnt-details', methods=['GET'])
 @login_required
 def get_invcnt_details():
