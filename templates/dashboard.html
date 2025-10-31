@@ -83,6 +83,18 @@
         </div>
     </div>
     {% endif %}
+    
+    {% if current_user.has_permission('inventory_counting') %}
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card dashboard-card" data-url="{{ url_for('inventory_counting_history') }}">
+            <div class="card-body text-center">
+                <i data-feather="clipboard" class="mb-3" style="width: 48px; height: 48px;"></i>
+                <h3>{{ stats.sap_inventory_count }}</h3>
+                <p>SAP Inventory Counts</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Quick Actions -->

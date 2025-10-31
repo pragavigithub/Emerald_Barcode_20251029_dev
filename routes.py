@@ -933,6 +933,7 @@ def dashboard():
         count_tasks = InventoryCount.query.filter_by(user_id=current_user.id).count()
         multi_grn_count = MultiGRNBatch.query.filter_by(user_id=current_user.id).count()
         direct_inventory_transfer_count = DirectInventoryTransfer.query.filter_by(user_id=current_user.id).count()
+        sap_inventory_count = SAPInventoryCount.query.filter_by(user_id=current_user.id).count()
         
         stats = {
             'grpo_count': grpo_count,
@@ -940,7 +941,8 @@ def dashboard():
             'pick_list_count': pick_list_count,
             'count_tasks': count_tasks,
             'multi_grn_count': multi_grn_count,
-            'direct_inventory_transfer_count': direct_inventory_transfer_count
+            'direct_inventory_transfer_count': direct_inventory_transfer_count,
+            'sap_inventory_count': sap_inventory_count
         }
         
         # Get recent activity - live data from database
@@ -986,6 +988,18 @@ def dashboard():
                 'status': getattr(count, 'status', 'active')
             })
         
+        # Get recent SAP Inventory Counting documents
+        recent_sap_counts = SAPInventoryCount.query.filter_by(user_id=current_user.id).order_by(SAPInventoryCount.loaded_at.desc()).limit(5).all()
+        for sap_count in recent_sap_counts:
+            from datetime import datetime
+            created_at = datetime.fromisoformat(sap_count.loaded_at) if sap_count.loaded_at and isinstance(sap_count.loaded_at, str) else sap_count.loaded_at if sap_count.loaded_at else datetime.utcnow()
+            recent_activities.append({
+                'type': 'SAP Inventory Count',
+                'description': f"Doc: {sap_count.doc_number} (DocEntry: {sap_count.doc_entry})",
+                'created_at': created_at,
+                'status': sap_count.document_status or 'Open'
+            })
+        
         # Get recent Multi GRN batches
         recent_multi_grns = MultiGRNBatch.query.filter_by(user_id=current_user.id).order_by(MultiGRNBatch.created_at.desc()).limit(5).all()
         for batch in recent_multi_grns:
@@ -1018,7 +1032,8 @@ def dashboard():
             'pick_list_count': 0,
             'count_tasks': 0,
             'multi_grn_count': 0,
-            'direct_inventory_transfer_count': 0
+            'direct_inventory_transfer_count': 0,
+            'sap_inventory_count': 0
         }
         recent_activities = []
         flash('Database needs to be updated. Please run: python migrate_database.py', 'warning')
@@ -3436,6 +3451,25 @@ def inventory_counting_sap():
         return redirect(url_for('dashboard'))
     
     return render_template('inventory_counting_sap.html')
+
+@app.route('/inventory_counting_history')
+@login_required
+def inventory_counting_history():
+    """View all SAP Inventory Counting documents that have been loaded/counted"""
+    # Screen-level authorization check
+    if not current_user.has_permission('inventory_counting'):
+        flash('Access denied. You do not have permission to access Inventory Counting screen.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Get all SAP Inventory Counting documents for the current user, ordered by most recent
+        sap_counts = SAPInventoryCount.query.filter_by(user_id=current_user.id).order_by(SAPInventoryCount.loaded_at.desc()).all()
+        
+        return render_template('inventory_counting_history.html', sap_counts=sap_counts)
+    except Exception as e:
+        logging.error(f"Error loading inventory counting history: {e}")
+        flash('Error loading inventory counting history', 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/inventory_counting/<int:count_id>')
 @login_required

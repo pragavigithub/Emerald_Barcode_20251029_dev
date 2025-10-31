@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}SAP Inventory Counting History - WMS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>SAP Inventory Counting History</h1>
+            <a href="{{ url_for('inventory_counting_sap') }}" class="btn btn-primary">
+                <i data-feather="plus"></i> New Count
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by Doc Number, DocEntry...">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="cdsOpen">Open</option>
+                            <option value="cdsClosed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-secondary" onclick="clearFilters()">
+                            <i data-feather="x"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SAP Inventory Counting Documents List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Counted Documents ({{ sap_counts|length }} total)</h5>
+            </div>
+            <div class="card-body">
+                {% if sap_counts %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="sapCountsTable">
+                        <thead>
+                            <tr>
+                                <th>Doc Entry</th>
+                                <th>Doc Number</th>
+                                <th>Series</th>
+                                <th>Count Date</th>
+                                <th>Status</th>
+                                <th>Counting Type</th>
+                                <th>Lines</th>
+                                <th>Loaded At</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for count in sap_counts %}
+                            <tr data-status="{{ count.document_status or '' }}">
+                                <td>{{ count.doc_entry }}</td>
+                                <td><strong>{{ count.doc_number or '-' }}</strong></td>
+                                <td>{{ count.series }}</td>
+                                <td>{{ count.count_date or '-' }}</td>
+                                <td>
+                                    {% if count.document_status == 'cdsOpen' %}
+                                    <span class="badge bg-success">Open</span>
+                                    {% elif count.document_status == 'cdsClosed' %}
+                                    <span class="badge bg-secondary">Closed</span>
+                                    {% else %}
+                                    <span class="badge bg-info">{{ count.document_status or '-' }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ count.counting_type or '-' }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ count.lines|length }} lines</span>
+                                </td>
+                                <td>
+                                    {% if count.loaded_at %}
+                                    {{ count.loaded_at }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if count.last_updated_at %}
+                                    {{ count.last_updated_at }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="viewCountDetails({{ count.doc_entry }}, {{ count.doc_number or 0 }}, {{ count.series }})">
+                                        <i data-feather="eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i data-feather="info"></i> No SAP inventory counting documents found.
+                    <a href="{{ url_for('inventory_counting_sap') }}">Load a counting document</a> to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Counting Document Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize feather icons
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Setup search
+    document.getElementById('searchInput').addEventListener('keyup', filterTable);
+    document.getElementById('statusFilter').addEventListener('change', filterTable);
+});
+
+function filterTable() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const statusValue = document.getElementById('statusFilter').value;
+    const table = document.getElementById('sapCountsTable');
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const text = row.textContent.toLowerCase();
+        const status = row.getAttribute('data-status');
+        
+        let showRow = true;
+        
+        // Filter by search
+        if (searchValue && !text.includes(searchValue)) {
+            showRow = false;
+        }
+        
+        // Filter by status
+        if (statusValue && status !== statusValue) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    }
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    filterTable();
+}
+
+function viewCountDetails(docEntry, docNumber, series) {
+    // Open the inventory counting page with this document pre-loaded
+    window.location.href = `{{ url_for('inventory_counting_sap') }}?doc_entry=${docEntry}&doc_num=${docNumber}&series=${series}`;
+}
+</script>
+{% endblock %}
