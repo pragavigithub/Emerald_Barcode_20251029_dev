@@ -1,0 +1,125 @@
+{
+    "odata.metadata": "https://192.168.0.152:50000/b1s/v1/$metadata#SAPB1.SQLQueryResult",
+    "SqlText": "SELECT T0.[DocEntry],T0.[DocNum],T0.[CardCode],T0.[CardName],T0.[DocStatus] FROM [ORDR] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE T0.[Series] = :series AND T0.[DocStatus] = 'O' ORDER BY T0.[DocEntry]",
+    "value": [
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1243,
+            "DocNum": 252600001,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1244,
+            "DocNum": 252600002,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1245,
+            "DocNum": 252600003,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1246,
+            "DocNum": 252600004,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1247,
+            "DocNum": 252600005,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1248,
+            "DocNum": 252600006,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1249,
+            "DocNum": 252600007,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1250,
+            "DocNum": 252600008,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1251,
+            "DocNum": 252600009,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1253,
+            "DocNum": 252600011,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1254,
+            "DocNum": 252600012,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1255,
+            "DocNum": 252600013,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1256,
+            "DocNum": 252600014,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1257,
+            "DocNum": 252600015,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "CUS0061",
+            "CardName": "Hutchinson SNC Debtors",
+            "DocEntry": 1260,
+            "DocNum": 252600018,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1261,
+            "DocNum": 252600019,
+            "DocStatus": "O"
+        },
+        {
+            "CardCode": "3D SEALS",
+            "CardName": "3D SEALS PRIVATE LIMITED",
+            "DocEntry": 1262,
+            "DocNum": 252600020,
+            "DocStatus": "O"
+        }
+    ]
+}
