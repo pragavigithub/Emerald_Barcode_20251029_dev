@@ -209,6 +209,8 @@
                                     <th>PO Qty</th>
                                     <th>Received Qty</th>
                                     <th>UoM</th>
+                                    <th>Qty per Pack</th>
+                                    <th>No of Packs</th>
                                     <th>Warehouse</th>
                                     <th>Batch</th>
                                     <th>Expiry</th>
@@ -236,6 +238,24 @@
                                         {% endif %}
                                     </td>
                                     <td><strong>{{ item.unit_of_measure or 'EA' }}</strong></td>
+                                    <td>
+                                        {% if item.serial_numbers and item.serial_numbers|length > 0 %}
+                                            {{ item.serial_numbers[0].qty_per_pack or '-' }}
+                                        {% elif item.batch_numbers and item.batch_numbers|length > 0 %}
+                                            {{ item.batch_numbers[0].qty_per_pack or '-' }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.serial_numbers and item.serial_numbers|length > 0 %}
+                                            {{ item.serial_numbers[0].no_of_packs or '-' }}
+                                        {% elif item.batch_numbers and item.batch_numbers|length > 0 %}
+                                            {{ item.batch_numbers[0].no_of_packs or '-' }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% set warehouse_code = item.bin_location.split('-')[0] if item.bin_location and '-' in item.bin_location else item.bin_location[:4] if item.bin_location else 'N/A' %}
                                         <strong>{{ warehouse_code }}</strong>
@@ -492,6 +512,16 @@
                                 <!-- Serial number inputs will be dynamically generated here -->
                             </div>
                             <input type="hidden" id="serial_numbers_json" name="serial_numbers_json">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="serial_number_of_bags" class="form-label">Number of Bags</label>
+                                    <input type="number" class="form-control" id="serial_number_of_bags" name="number_of_bags"
+                                           placeholder="Enter number of bags for label printing" min="1" max="1000" value="1">
+                                    <small class="form-text text-muted">Enter the number of bags to generate barcode labels (e.g., if you have 100 serials and enter 5, each bag will contain 20 serials)</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

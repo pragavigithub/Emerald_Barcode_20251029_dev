@@ -97,9 +97,11 @@ class GRPOSerialNumber(db.Model):
     expiry_date = db.Column(db.Date)
     manufacture_date = db.Column(db.Date)
     notes = db.Column(db.Text)
-    #barcode = db.Column(db.String(200))  # Base64 encoded barcode image
     quantity = db.Column(db.Numeric(15, 3), default=1.0)
     base_line_number = db.Column(db.Integer, default=0)
+    grn_number = db.Column(db.String(50))
+    qty_per_pack = db.Column(db.Numeric(15, 3), default=1.0)
+    no_of_packs = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -117,7 +119,10 @@ class GRPOBatchNumber(db.Model):
     manufacturer_serial_number = db.Column(db.String(100))
     internal_serial_number = db.Column(db.String(100))
     expiry_date = db.Column(db.Date)
-    barcode = db.Column(db.String(200))  # Base64 encoded barcode image
+    barcode = db.Column(db.String(200))
+    grn_number = db.Column(db.String(50))
+    qty_per_pack = db.Column(db.Numeric(15, 3))
+    no_of_packs = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships

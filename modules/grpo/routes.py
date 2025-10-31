@@ -299,6 +299,15 @@ def add_grpo_item(grpo_id):
         serial_numbers_json = request.form.get('serial_numbers_json', '')
         batch_numbers_json = request.form.get('batch_numbers_json', '')
         
+        # Safely parse number_of_bags with validation
+        try:
+            number_of_bags_str = (request.form.get('number_of_bags') or '1').strip()
+            number_of_bags = int(number_of_bags_str) if number_of_bags_str else 1
+            if number_of_bags < 1:
+                number_of_bags = 1
+        except (ValueError, TypeError, AttributeError):
+            number_of_bags = 1
+        
         if not all([item_code, item_name, quantity > 0]):
             flash('Item Code, Item Name, and Quantity are required', 'error')
             return redirect(url_for('grpo.detail', grpo_id=grpo_id))
@@ -370,11 +379,29 @@ def add_grpo_item(grpo_id):
                     db.session.rollback()
                     return redirect(url_for('grpo.detail', grpo_id=grpo_id))
                 
+                # Calculate qty per pack based on number of serials per bag
+                # For serials, we distribute the serials across bags, so qty_per_pack is serials per bag
+                total_serials = len(serial_numbers)
+                
+                # Validate that number_of_bags doesn't exceed total serials
+                if number_of_bags > total_serials:
+                    flash(f'Number of bags ({number_of_bags}) cannot exceed number of serial items ({total_serials})', 'error')
+                    db.session.rollback()
+                    return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+                
+                # Validate that serials can be evenly divided into bags (integer pack sizes only)
+                if total_serials % number_of_bags != 0:
+                    flash(f'Number of serials ({total_serials}) must be evenly divisible by number of bags ({number_of_bags}). Each bag must contain the same integer number of serials.', 'error')
+                    db.session.rollback()
+                    return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+                
+                qty_per_pack = total_serials / number_of_bags
+                no_of_packs = number_of_bags
+                
                 # Create serial number records with automatic barcode generation
                 for idx, serial_data in enumerate(serial_numbers):
-                    # Generate barcode for serial number
-                    serial_barcode_data = f"SN:{serial_data.get('internal_serial_number')}"
-                    serial_barcode = generate_barcode(serial_barcode_data)
+                    # Generate unique GRN number for this serial
+                    grn_number = generate_unique_grn_number(grpo, idx + 1)
                     
                     serial = GRPOSerialNumber(
                         grpo_item_id=grpo_item.id,
@@ -383,14 +410,16 @@ def add_grpo_item(grpo_id):
                         expiry_date=datetime.strptime(serial_data['expiry_date'], '%Y-%m-%d').date() if serial_data.get('expiry_date') else None,
                         manufacture_date=datetime.strptime(serial_data['manufacture_date'], '%Y-%m-%d').date() if serial_data.get('manufacture_date') else None,
                         notes=serial_data.get('notes', ''),
-                        #barcode=serial_barcode,
                         quantity=1.0,
-                        base_line_number=idx
+                        base_line_number=idx,
+                        grn_number=grn_number,
+                        qty_per_pack=qty_per_pack,
+                        no_of_packs=no_of_packs
                     )
                     db.session.add(serial)
-                    logging.info(f"✅ Generated barcode for serial: {serial_data.get('internal_serial_number')}")
+                    logging.info(f"✅ Created serial {serial_data.get('internal_serial_number')} with GRN {grn_number}")
                 
-                logging.info(f"✅ Added {len(serial_numbers)} serial numbers for item {item_code}")
+                logging.info(f"✅ Added {len(serial_numbers)} serial numbers for item {item_code} (Qty per pack: {qty_per_pack}, No of packs: {no_of_packs})")
                 
             except json.JSONDecodeError:
                 flash('Invalid serial numbers data format', 'error')
@@ -415,22 +444,35 @@ def add_grpo_item(grpo_id):
                 
                 # Create batch number records with automatic barcode generation
                 for idx, batch_data in enumerate(batch_numbers):
-                    # Generate barcode for batch number
-                    batch_barcode_data = f"BATCH:{batch_data.get('batch_number')}"
-                    batch_barcode = generate_barcode(batch_barcode_data)
+                    batch_qty = float(batch_data.get('quantity', 0))
+                    
+                    # Validate that batch quantity can be evenly divided into bags
+                    if batch_qty % number_of_bags != 0:
+                        flash(f'Batch quantity ({batch_qty}) for batch {batch_data.get("batch_number")} must be evenly divisible by number of bags ({number_of_bags}). Each bag must contain the same integer quantity.', 'error')
+                        db.session.rollback()
+                        return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+                    
+                    # Calculate qty per pack for this batch
+                    qty_per_pack = batch_qty / number_of_bags if number_of_bags > 0 else batch_qty
+                    no_of_packs = number_of_bags
+                    
+                    # Generate unique GRN number for this batch
+                    grn_number = generate_unique_grn_number(grpo, idx + 1)
                     
                     batch = GRPOBatchNumber(
                         grpo_item_id=grpo_item.id,
                         batch_number=batch_data.get('batch_number'),
-                        quantity=float(batch_data.get('quantity', 0)),
+                        quantity=batch_qty,
                         manufacturer_serial_number=batch_data.get('manufacturer_serial_number', ''),
                         internal_serial_number=batch_data.get('internal_serial_number', ''),
                         expiry_date=datetime.strptime(batch_data['expiry_date'], '%Y-%m-%d').date() if batch_data.get('expiry_date') else None,
-                        #barcode=batch_barcode,
-                        base_line_number=idx
+                        base_line_number=idx,
+                        grn_number=grn_number,
+                        qty_per_pack=qty_per_pack,
+                        no_of_packs=no_of_packs
                     )
                     db.session.add(batch)
-                    logging.info(f"✅ Generated barcode for batch: {batch_data.get('batch_number')}")
+                    logging.info(f"✅ Created batch {batch_data.get('batch_number')} with GRN {grn_number} (Qty per pack: {qty_per_pack}, No of packs: {no_of_packs})")
                 
                 logging.info(f"✅ Added {len(batch_numbers)} batch numbers for item {item_code}")
                 
@@ -627,6 +669,15 @@ def generate_barcode(data):
     except Exception as e:
         logging.error(f"❌ Error generating barcode for data '{str(data)[:50]}...': {str(e)}")
         return None
+
+def generate_unique_grn_number(grpo_document, sequence_number):
+    """Generate unique GRN number for each serial/batch label
+    Format: GRN/YY/NNNNNNNNNN where YY is 2-digit year and N is sequence
+    """
+    year_suffix = grpo_document.created_at.strftime('%y')
+    base_id = str(grpo_document.id).zfill(8)
+    seq = str(sequence_number).zfill(4)
+    return f"GRN/{year_suffix}/{base_id}{seq}"
 
 @grpo_bp.route('/items/<int:item_id>/serial-numbers', methods=['GET', 'POST'])
 @login_required
@@ -946,16 +997,19 @@ def generate_barcode_labels_api():
             total_serials = len(serial_numbers)
             
             for idx, serial in enumerate(serial_numbers, start=1):
+                # Use the unique GRN number for this serial
+                serial_grn = serial.grn_number or doc_number
+                
                 qr_data = {
                     'PO': po_number,
                     'SerialNumber': serial.internal_serial_number,
-                    'Qty': 1,
-                    'Pack': f"{idx} of {total_serials}",
+                    'Qty': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
+                    'Pack': f"{idx} of {serial.no_of_packs or total_serials}",
                     'GRN Date': grn_date,
                     'Exp Date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
                     'ItemCode': item.item_code,
                     'ItemDesc': item.item_name or '',
-                    'id': doc_number
+                    'id': serial_grn
                 }
                 
                 # Convert to QR code friendly format
@@ -964,16 +1018,19 @@ def generate_barcode_labels_api():
                 
                 label = {
                     'sequence': idx,
-                    'total': total_serials,
-                    'pack_text': f"{idx} of {total_serials}",
+                    'total': serial.no_of_packs or total_serials,
+                    'pack_text': f"{idx} of {serial.no_of_packs or total_serials}",
                     'po_number': po_number,
                     'serial_number': serial.internal_serial_number,
-                    'quantity': 1,
+                    'quantity': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
+                    'qty_per_pack': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
+                    'no_of_packs': serial.no_of_packs or total_serials,
                     'grn_date': grn_date,
+                    'grn_number': serial_grn,
                     'expiration_date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
                     'item_code': item.item_code,
                     'item_name': item.item_name or '',
-                    'doc_number': doc_number,
+                    'doc_number': serial_grn,
                     'qr_code_image': qr_code_image,
                     'qr_data': qr_data
                 }
@@ -985,16 +1042,19 @@ def generate_barcode_labels_api():
             total_batches = len(batch_numbers)
             
             for idx, batch in enumerate(batch_numbers, start=1):
+                # Use the unique GRN number for this batch
+                batch_grn = batch.grn_number or doc_number
+                
                 qr_data = {
                     'PO': po_number,
                     'BatchNumber': batch.batch_number,
-                    'Qty': float(batch.quantity),
-                    'Pack': f"{idx} of {total_batches}",
+                    'Qty': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
+                    'Pack': f"{idx} of {batch.no_of_packs or total_batches}",
                     'GRN Date': grn_date,
                     'Exp Date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
                     'ItemCode': item.item_code,
                     'ItemDesc': item.item_name or '',
-                    'id': doc_number
+                    'id': batch_grn
                 }
                 
                 # Convert to QR code friendly format
@@ -1003,16 +1063,19 @@ def generate_barcode_labels_api():
                 
                 label = {
                     'sequence': idx,
-                    'total': total_batches,
-                    'pack_text': f"{idx} of {total_batches}",
+                    'total': batch.no_of_packs or total_batches,
+                    'pack_text': f"{idx} of {batch.no_of_packs or total_batches}",
                     'po_number': po_number,
                     'batch_number': batch.batch_number,
                     'quantity': float(batch.quantity),
+                    'qty_per_pack': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
+                    'no_of_packs': batch.no_of_packs or total_batches,
                     'grn_date': grn_date,
+                    'grn_number': batch_grn,
                     'expiration_date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
                     'item_code': item.item_code,
                     'item_name': item.item_name or '',
-                    'doc_number': doc_number,
+                    'doc_number': batch_grn,
                     'qr_code_image': qr_code_image,
                     'qr_data': qr_data
                 }
