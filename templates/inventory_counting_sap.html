@@ -174,13 +174,32 @@
 let currentDocument = null;
 let countingLines = [];
 
+// URL parameters passed from route for auto-loading
+const urlDocEntry = '{{ doc_entry }}';
+const urlDocNum = '{{ doc_num }}';
+const urlSeries = '{{ series }}';
+
 // Load document series on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Load series asynchronously without blocking
-    loadDocumentSeries().catch(error => {
+    try {
+        await loadDocumentSeries();
+        
+        // Auto-load document if URL parameters are present
+        if (urlSeries && urlDocNum) {
+            // Set the series dropdown
+            document.getElementById('documentSeries').value = urlSeries;
+            
+            // Set the document number
+            document.getElementById('documentNumber').value = urlDocNum;
+            
+            // Auto-load the document
+            await loadCountingDocument();
+        }
+    } catch (error) {
         console.error('Failed to load document series:', error);
         document.getElementById('documentSeries').innerHTML = '<option value="">Error loading series</option>';
-    });
+    }
     
     // Initialize feather icons
     if (typeof feather !== 'undefined') {
