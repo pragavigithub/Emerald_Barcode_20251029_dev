@@ -6,6 +6,9 @@ A Flask-based Warehouse Management System (WMS) designed to streamline inventory
 ## User Preferences
 *   Keep MySQL migration files updated when database schema changes occur
 
+## Recent Changes (2025-10-31)
+*   **Fixed Inventory Counting UI Issue**: Resolved issue where SAP Inventory Counting documents (counted and posted) were not displaying in the UI. Added dashboard statistics card, recent activities section, and comprehensive history page (`/inventory_counting_history`) to view all counted documents with filtering capabilities.
+
 ## System Architecture
 The system is built on a Flask web application backend, utilizing Jinja2 for server-side rendering. A core architectural decision is the deep integration with the SAP B1 Service Layer API for all critical warehouse operations, ensuring data consistency and real-time updates. PostgreSQL is the primary database target for cloud deployments, with SQLite serving as a fallback. User authentication uses Flask-Login with robust role-based access control. The application is designed for production deployment using Gunicorn with autoscale capabilities.
 
@@ -17,7 +20,7 @@ The system is built on a Flask web application backend, utilizing Jinja2 for ser
 *   **Sales Order Against Delivery:** Module for creating Delivery Notes against Sales Orders with SAP B1 integration, including SO series dropdown selection with proper series name display, cascading dropdown for open SO document numbers (using SQL Query `Get_Open_SO_DocNum` with OData fallback), document loading, item picking with batch/serial validation, individual QR code label generation, and direct SAP B1 posting. The module follows the same UI pattern as GRPO for consistency.
 *   **Pick List Management:** Generation and processing of pick lists.
 *   **Barcode Scanning:** Integrated camera-based scanning for various modules (GRPO, Bin Scanning, Pick List, Inventory Transfer, Barcode Reprint).
-*   **Inventory Counting:** SAP B1 integrated inventory counting with local PostgreSQL database storage for tracking, audit trails, user tracking, and timestamps.
+*   **Inventory Counting:** SAP B1 integrated inventory counting with local PostgreSQL database storage for tracking, audit trails, user tracking, and timestamps. Includes a comprehensive history view for all counted and posted documents, with dashboard integration showing statistics and recent counting activities.
 *   **Branch Management:** Functionality for managing different warehouse branches.
 *   **Quality Control Dashboard:** Provides oversight for quality processes.
 *   **UI/UX:** Focuses on intuitive workflows for managing inventory, including serial number transfers and real-time validation against SAP B1.
