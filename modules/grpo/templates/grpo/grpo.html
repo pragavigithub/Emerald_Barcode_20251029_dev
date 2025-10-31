@@ -97,6 +97,8 @@
                                         <span class="badge bg-success">Approved</span>
                                     {% elif doc.status == 'rejected' %}
                                         <span class="badge bg-danger">Rejected</span>
+                                    {% elif doc.status == 'posted' %}
+                                        <span class="badge bg-success">Posted</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ doc.sap_document_number or 'N/A' }}</td>
