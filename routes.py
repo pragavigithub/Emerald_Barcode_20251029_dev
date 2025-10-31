@@ -3450,7 +3450,15 @@ def inventory_counting_sap():
         flash('Access denied. You do not have permission to access Inventory Counting screen.', 'error')
         return redirect(url_for('dashboard'))
     
-    return render_template('inventory_counting_sap.html')
+    # Get URL parameters for auto-loading documents
+    doc_entry = request.args.get('doc_entry', '')
+    doc_num = request.args.get('doc_num', '')
+    series = request.args.get('series', '')
+    
+    return render_template('inventory_counting_sap.html', 
+                         doc_entry=doc_entry, 
+                         doc_num=doc_num, 
+                         series=series)
 
 @app.route('/inventory_counting_history')
 @login_required
