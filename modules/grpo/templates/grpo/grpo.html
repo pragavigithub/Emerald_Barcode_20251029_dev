@@ -24,30 +24,31 @@
                     <!-- Search Form -->
 
                     <form id="searchForm" class="d-flex" method="GET" action="{{ url_for('grpo') }}">
-    <input type="hidden" name="per_page" value="{{ per_page }}">
-    <input id="searchInput" class="form-control form-control-sm me-2"
-           type="search" name="search" placeholder="Search GRN..."
-           aria-label="Search" value="{{ search_term or '' }}" style="width: 250px;">
-    {% if search_term %}
-    <a href="{{ url_for('grpo', per_page=per_page) }}" class="btn btn-outline-secondary btn-sm ms-1">
-        <i data-feather="x"></i>
-    </a>
-    {% endif %}
-</form>
-<!--                    <form class="d-flex" method="GET" action="{{ url_for('grpo') }}">-->
-<!--                        <input type="hidden" name="per_page" value="{{ per_page }}">-->
-<!--                        <input class="form-control form-control-sm me-2" type="search" name="search"-->
-<!--                               placeholder="Search GRN..." aria-label="Search" -->
-<!--                               value="{{ search_term or '' }}" style="width: 250px;">-->
-<!--                        <button class="btn btn-outline-secondary btn-sm" type="submit">-->
-<!--                            <i data-feather="search"></i>-->
-<!--                        </button>-->
-<!--                        {% if search_term %}-->
-<!--                        <a href="{{ url_for('grpo', per_page=per_page) }}" class="btn btn-outline-secondary btn-sm ms-1">-->
-<!--                            <i data-feather="x"></i>-->
-<!--                        </a>-->
-<!--                        {% endif %}-->
-<!--                    </form>-->
+                        <input type="hidden" name="per_page" value="{{ per_page }}">
+                        <input id="searchInput" class="form-control form-control-sm me-2"
+                               type="search" name="search" placeholder="Search GRN..."
+                               aria-label="Search" value="{{ search_term or '' }}" style="width: 250px;">
+                        {% if search_term %}
+                        <a href="{{ url_for('grpo', per_page=per_page) }}"
+                           class="btn btn-outline-secondary btn-sm ms-1">
+                            <i data-feather="x"></i>
+                        </a>
+                        {% endif %}
+                    </form>
+                    <!--                    <form class="d-flex" method="GET" action="{{ url_for('grpo') }}">-->
+                    <!--                        <input type="hidden" name="per_page" value="{{ per_page }}">-->
+                    <!--                        <input class="form-control form-control-sm me-2" type="search" name="search"-->
+                    <!--                               placeholder="Search GRN..." aria-label="Search" -->
+                    <!--                               value="{{ search_term or '' }}" style="width: 250px;">-->
+                    <!--                        <button class="btn btn-outline-secondary btn-sm" type="submit">-->
+                    <!--                            <i data-feather="search"></i>-->
+                    <!--                        </button>-->
+                    <!--                        {% if search_term %}-->
+                    <!--                        <a href="{{ url_for('grpo', per_page=per_page) }}" class="btn btn-outline-secondary btn-sm ms-1">-->
+                    <!--                            <i data-feather="x"></i>-->
+                    <!--                        </a>-->
+                    <!--                        {% endif %}-->
+                    <!--                    </form>-->
                 </div>
                 <!-- Rows per page selector -->
                 <div class="d-flex justify-content-between align-items-center">
@@ -55,17 +56,22 @@
                         <label for="rowsPerPage" class="form-label mb-0 me-2">Rows per page:</label>
                         <select id="rowsPerPage" class="form-select form-select-sm" style="width: auto;"
                                 onchange="changeRowsPerPage(this.value)">
-                            <option value="5" {{ 'selected' if per_page == 5 else '' }}>5</option>
-                            <option value="10" {{ 'selected' if per_page == 10 else '' }}>10</option>
-                            <option value="25" {{ 'selected' if per_page == 25 else '' }}>25</option>
-                            <option value="50" {{ 'selected' if per_page == 50 else '' }}>50</option>
-                            <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
+                            <option value="5" {{
+                            'selected' if per_page == 5 else '' }}>5</option>
+                            <option value="10" {{
+                            'selected' if per_page == 10 else '' }}>10</option>
+                            <option value="25" {{
+                            'selected' if per_page == 25 else '' }}>25</option>
+                            <option value="50" {{
+                            'selected' if per_page == 50 else '' }}>50</option>
+                            <option value="100" {{
+                            'selected' if per_page == 100 else '' }}>100</option>
                         </select>
                     </div>
                     {% if pagination %}
                     <small class="text-muted">
-                        Showing {{ ((pagination.page - 1) * pagination.per_page + 1) }} to 
-                        {{ ((pagination.page - 1) * pagination.per_page + documents|length) }} 
+                        Showing {{ ((pagination.page - 1) * pagination.per_page + 1) }} to
+                        {{ ((pagination.page - 1) * pagination.per_page + documents|length) }}
                         of {{ pagination.total }} items
                     </small>
                     {% endif %}
@@ -76,40 +82,41 @@
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
-                            <tr>
-                                <th>GRN ID</th>
-                                <th>PO Number</th>
-                                <th>Status</th>
-                                <th>SAP Document</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
+                        <tr>
+                            <th>GRN ID</th>
+                            <th>PO Number</th>
+                            <th>Status</th>
+                            <th>SAP Document</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            {% for doc in documents %}
-                            <tr>
-                                <td>{{ doc.id }}</td>
-                                <td>{{ doc.po_number }}</td>
-                                <td>
-                                    {% if doc.status == 'draft' %}
-                                        <span class="badge bg-warning">Draft</span>
-                                    {% elif doc.status == 'approved' %}
-                                        <span class="badge bg-success">Approved</span>
-                                    {% elif doc.status == 'rejected' %}
-                                        <span class="badge bg-danger">Rejected</span>
-                                    {% elif doc.status == 'posted' %}
-                                        <span class="badge bg-success">Posted</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ doc.sap_document_number or 'N/A' }}</td>
-                                <td>{{ doc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>
-                                    <a href="{{ url_for('grpo_detail', grpo_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i data-feather="eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        {% for doc in documents %}
+                        <tr>
+                            <td>{{ doc.id }}</td>
+                            <td>{{ doc.po_number }}</td>
+                            <td>
+                                {% if doc.status == 'draft' %}
+                                <span class="badge bg-warning">Draft</span>
+                                {% elif doc.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif doc.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% elif doc.status == 'posted' %}
+                                <span class="badge bg-success">Posted</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ doc.sap_document_number or 'N/A' }}</td>
+                            <td>{{ doc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="{{ url_for('grpo_detail', grpo_id=doc.id) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i data-feather="eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -120,47 +127,51 @@
                     <ul class="pagination pagination-sm justify-content-center">
                         <!-- Previous Page -->
                         {% if pagination.has_prev %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('grpo', page=pagination.prev_num, search=search_term, per_page=per_page) }}">
-                                    <i data-feather="chevron-left"></i>
-                                </a>
-                            </li>
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="{{ url_for('grpo', page=pagination.prev_num, search=search_term, per_page=per_page) }}">
+                                <i data-feather="chevron-left"></i>
+                            </a>
+                        </li>
                         {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link"><i data-feather="chevron-left"></i></span>
-                            </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i data-feather="chevron-left"></i></span>
+                        </li>
                         {% endif %}
 
                         <!-- Page Numbers -->
                         {% for page_num in pagination.iter_pages() %}
-                            {% if page_num %}
-                                {% if page_num != pagination.page %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('grpo', page=page_num, search=search_term, per_page=per_page) }}">{{ page_num }}</a>
-                                    </li>
-                                {% else %}
-                                    <li class="page-item active">
-                                        <span class="page-link">{{ page_num }}</span>
-                                    </li>
-                                {% endif %}
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <span class="page-link">...</span>
-                                </li>
-                            {% endif %}
+                        {% if page_num %}
+                        {% if page_num != pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="{{ url_for('grpo', page=page_num, search=search_term, per_page=per_page) }}">{{
+                                page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
                         {% endfor %}
 
                         <!-- Next Page -->
                         {% if pagination.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('grpo', page=pagination.next_num, search=search_term, per_page=per_page) }}">
-                                    <i data-feather="chevron-right"></i>
-                                </a>
-                            </li>
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="{{ url_for('grpo', page=pagination.next_num, search=search_term, per_page=per_page) }}">
+                                <i data-feather="chevron-right"></i>
+                            </a>
+                        </li>
                         {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link"><i data-feather="chevron-right"></i></span>
-                            </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i data-feather="chevron-right"></i></span>
+                        </li>
                         {% endif %}
                     </ul>
                 </nav>
@@ -171,12 +182,13 @@
                 <div class="text-center py-4">
                     <i data-feather="package" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
                     {% if search_term %}
-                        <h5>No Results Found</h5>
-                        <p class="text-muted">No GRN documents match your search for "{{ search_term }}"</p>
-                        <a href="{{ url_for('grpo', per_page=per_page) }}" class="btn btn-outline-secondary">Clear Search</a>
+                    <h5>No Results Found</h5>
+                    <p class="text-muted">No GRN documents match your search for "{{ search_term }}"</p>
+                    <a href="{{ url_for('grpo', per_page=per_page) }}" class="btn btn-outline-secondary">Clear
+                        Search</a>
                     {% else %}
-                        <h5>No GRPO Documents</h5>
-                        <p class="text-muted">Create your first GRPO document to get started.</p>
+                    <h5>No GRPO Documents</h5>
+                    <p class="text-muted">Create your first GRPO document to get started.</p>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -202,7 +214,7 @@
                         </select>
                         <small class="text-muted">Select the purchase order series</small>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="po_number" class="form-label">PO Document Number</label>
                         <div class="input-group">
@@ -215,14 +227,14 @@
                         </div>
                         <small class="text-muted">Select the purchase order series first</small>
                     </div>
-                    
+
                     <div class="scanner-container" id="poScannerContainer" style="display: none;">
                         <video id="poScanVideo" class="scanner-video" autoplay></video>
                         <div class="scanner-overlay"></div>
                     </div>
-                    
+
                     <div id="poValidationResult" style="display: none;"></div>
-                    
+
                     <input type="hidden" id="doc_entry" name="doc_entry" value="">
                 </div>
                 <div class="modal-footer">
@@ -237,215 +249,215 @@
 
 {% block scripts %}
 <script>
-function changeRowsPerPage(perPage) {
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('per_page', perPage);
-    urlParams.delete('page');  // Reset to first page when changing rows per page
-    window.location.href = '{{ url_for("grpo") }}?' + urlParams.toString();
-}
+    function changeRowsPerPage(perPage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('per_page', perPage);
+        urlParams.delete('page');  // Reset to first page when changing rows per page
+        window.location.href = '{{ url_for("grpo") }}?' + urlParams.toString();
+    }
 
-function scanPO() {
-    const container = document.getElementById('poScannerContainer');
-    const video = document.getElementById('poScanVideo');
-    
-    container.style.display = 'block';
-    
-    startBarcodeScanner('poScanVideo', function(code) {
-        container.style.display = 'none';
-        stopBarcodeScanner();
-        
-        // Try to find and select the scanned PO number in the dropdown
-        const docNumSelect = document.getElementById('po_number');
-        let found = false;
-        
-        for (let i = 0; i < docNumSelect.options.length; i++) {
-            if (docNumSelect.options[i].value == code) {
-                docNumSelect.selectedIndex = i;
-                found = true;
-                
-                // Trigger validation
-                const series = document.getElementById('po_series').value;
-                if (series) {
-                    getDocEntry(series, code);
+    function scanPO() {
+        const container = document.getElementById('poScannerContainer');
+        const video = document.getElementById('poScanVideo');
+
+        container.style.display = 'block';
+
+        startBarcodeScanner('poScanVideo', function(code) {
+            container.style.display = 'none';
+            stopBarcodeScanner();
+
+            // Try to find and select the scanned PO number in the dropdown
+            const docNumSelect = document.getElementById('po_number');
+            let found = false;
+
+            for (let i = 0; i < docNumSelect.options.length; i++) {
+                if (docNumSelect.options[i].value == code) {
+                    docNumSelect.selectedIndex = i;
+                    found = true;
+
+                    // Trigger validation
+                    const series = document.getElementById('po_series').value;
+                    if (series) {
+                        getDocEntry(series, code);
+                    }
+                    break;
                 }
-                break;
             }
-        }
-        
-        if (!found && code) {
+
+            if (!found && code) {
+                const resultDiv = document.getElementById('poValidationResult');
+                resultDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>PO ${code} not found in the current series.</strong>
+                        <br>Please select the correct series first or verify the PO number.
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+            }
+        });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const form = document.getElementById('searchForm');
+        clearTimeout(window._grpoSearchTimeout);
+        window._grpoSearchTimeout = setTimeout(() => {
+            form.submit();
+        }, 500); // Delay in milliseconds to prevent submitting too quickly
+    });
+
+    async function validatePO(poNumber) {
+        try {
+            const response = await fetch('/api/validate_po', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ po_number: poNumber })
+            });
+
+            const data = await response.json();
             const resultDiv = document.getElementById('poValidationResult');
-            resultDiv.innerHTML = `
-                <div class="alert alert-warning">
-                    <strong>PO ${code} not found in the current series.</strong>
-                    <br>Please select the correct series first or verify the PO number.
-                </div>
-            `;
+
+            if (data.valid) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Valid PO:</strong> ${data.po_data.CardName || 'Unknown Supplier'}
+                        <br><small>Document Total: ${data.po_data.DocTotal || 'N/A'}</small>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Invalid PO:</strong> ${data.error}
+                    </div>
+                `;
+            }
+
             resultDiv.style.display = 'block';
+        } catch (error) {
+            console.error('Error validating PO:', error);
+        }
+    }
+
+    // Clean up scanner when modal is closed
+    document.getElementById('createGRPOModal').addEventListener('hidden.bs.modal', function () {
+        stopBarcodeScanner();
+        document.getElementById('poScannerContainer').style.display = 'none';
+    });
+
+    document.getElementById('createGRPOModal').addEventListener('shown.bs.modal', function () {
+        loadPOSeries();
+    });
+
+    function loadPOSeries() {
+        fetch('/api/get-po-series')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.series) {
+                    const seriesSelect = document.getElementById('po_series');
+                    seriesSelect.innerHTML = '<option value="">Select Series</option>';
+
+                    data.series.forEach(series => {
+                        const option = document.createElement('option');
+                        option.value = series.Series;
+                        option.textContent = `${series.SeriesName} (${series.Series})`;
+                        seriesSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading PO series:', error);
+            });
+    }
+
+    document.getElementById('po_number').addEventListener('change', function() {
+        const series = document.getElementById('po_series').value;
+        const docNum = this.value;
+
+        if (series && docNum) {
+            getDocEntry(series, docNum);
         }
     });
-}
 
-document.getElementById('searchInput').addEventListener('input', function () {
-    const form = document.getElementById('searchForm');
-    clearTimeout(window._grpoSearchTimeout);
-    window._grpoSearchTimeout = setTimeout(() => {
-        form.submit();
-    }, 500); // Delay in milliseconds to prevent submitting too quickly
-});
+    document.getElementById('po_series').addEventListener('change', function() {
+        const series = this.value;
 
-async function validatePO(poNumber) {
-    try {
-        const response = await fetch('/api/validate_po', {
+        if (series) {
+            loadPODocNumbers(series);
+        } else {
+            const docNumSelect = document.getElementById('po_number');
+            docNumSelect.innerHTML = '<option value="">Select Series First</option>';
+            docNumSelect.disabled = true;
+            document.getElementById('poValidationResult').style.display = 'none';
+        }
+    });
+
+    function loadPODocNumbers(series) {
+        const docNumSelect = document.getElementById('po_number');
+        docNumSelect.innerHTML = '<option value="">Loading...</option>';
+        docNumSelect.disabled = true;
+
+        fetch(`/api/get-po-docnums?series=${series}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.documents && data.documents.length > 0) {
+                    docNumSelect.innerHTML = '<option value="">Select Document Number</option>';
+                    data.documents.forEach(doc => {
+                        const option = document.createElement('option');
+                        option.value = doc.DocNum;
+                        option.textContent = `${doc.DocNum} - ${doc.CardName} (${doc.CardCode})`;
+                        option.setAttribute('data-doc-entry', doc.DocEntry);
+                        option.setAttribute('data-series', doc.Series);
+                        docNumSelect.appendChild(option);
+                    });
+                    docNumSelect.disabled = false;
+                } else {
+                    docNumSelect.innerHTML = '<option value="">No Open POs Found</option>';
+                    docNumSelect.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading PO document numbers:', error);
+                docNumSelect.innerHTML = '<option value="">Error Loading Documents</option>';
+                docNumSelect.disabled = true;
+            });
+    }
+
+    function getDocEntry(series, docNum) {
+        fetch('/api/get-doc-entry', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ po_number: poNumber })
-        });
-        
-        const data = await response.json();
-        const resultDiv = document.getElementById('poValidationResult');
-        
-        if (data.valid) {
-            resultDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <strong>Valid PO:</strong> ${data.po_data.CardName || 'Unknown Supplier'}
-                    <br><small>Document Total: ${data.po_data.DocTotal || 'N/A'}</small>
-                </div>
-            `;
-        } else {
-            resultDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <strong>Invalid PO:</strong> ${data.error}
-                </div>
-            `;
-        }
-        
-        resultDiv.style.display = 'block';
-    } catch (error) {
-        console.error('Error validating PO:', error);
-    }
-}
-
-// Clean up scanner when modal is closed
-document.getElementById('createGRPOModal').addEventListener('hidden.bs.modal', function () {
-    stopBarcodeScanner();
-    document.getElementById('poScannerContainer').style.display = 'none';
-});
-
-document.getElementById('createGRPOModal').addEventListener('shown.bs.modal', function () {
-    loadPOSeries();
-});
-
-function loadPOSeries() {
-    fetch('/api/get-po-series')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.series) {
-                const seriesSelect = document.getElementById('po_series');
-                seriesSelect.innerHTML = '<option value="">Select Series</option>';
-                
-                data.series.forEach(series => {
-                    const option = document.createElement('option');
-                    option.value = series.Series;
-                    option.textContent = `${series.SeriesName} (${series.Series})`;
-                    seriesSelect.appendChild(option);
-                });
-            }
+            body: JSON.stringify({
+                series: series,
+                doc_num: docNum
+            })
         })
-        .catch(error => {
-            console.error('Error loading PO series:', error);
-        });
-}
-
-document.getElementById('po_number').addEventListener('change', function() {
-    const series = document.getElementById('po_series').value;
-    const docNum = this.value;
-    
-    if (series && docNum) {
-        getDocEntry(series, docNum);
-    }
-});
-
-document.getElementById('po_series').addEventListener('change', function() {
-    const series = this.value;
-    
-    if (series) {
-        loadPODocNumbers(series);
-    } else {
-        const docNumSelect = document.getElementById('po_number');
-        docNumSelect.innerHTML = '<option value="">Select Series First</option>';
-        docNumSelect.disabled = true;
-        document.getElementById('poValidationResult').style.display = 'none';
-    }
-});
-
-function loadPODocNumbers(series) {
-    const docNumSelect = document.getElementById('po_number');
-    docNumSelect.innerHTML = '<option value="">Loading...</option>';
-    docNumSelect.disabled = true;
-    
-    fetch(`/api/get-po-docnums?series=${series}`)
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.documents && data.documents.length > 0) {
-                docNumSelect.innerHTML = '<option value="">Select Document Number</option>';
-                data.documents.forEach(doc => {
-                    const option = document.createElement('option');
-                    option.value = doc.DocNum;
-                    option.textContent = `${doc.DocNum} - ${doc.CardName} (${doc.CardCode})`;
-                    option.setAttribute('data-doc-entry', doc.DocEntry);
-                    option.setAttribute('data-series', doc.Series);
-                    docNumSelect.appendChild(option);
-                });
-                docNumSelect.disabled = false;
+            if (data.success && data.doc_entry) {
+                document.getElementById('doc_entry').value = data.doc_entry;
+                document.getElementById('poValidationResult').innerHTML =
+                    '<div class="alert alert-success"><i data-feather="check-circle"></i> PO found! DocEntry: ' + data.doc_entry + '</div>';
+                document.getElementById('poValidationResult').style.display = 'block';
+                feather.replace();
             } else {
-                docNumSelect.innerHTML = '<option value="">No Open POs Found</option>';
-                docNumSelect.disabled = true;
+                document.getElementById('doc_entry').value = '';
+                document.getElementById('poValidationResult').innerHTML =
+                    '<div class="alert alert-danger"><i data-feather="x-circle"></i> PO not found. Please check series and document number.</div>';
+                document.getElementById('poValidationResult').style.display = 'block';
+                feather.replace();
             }
         })
         .catch(error => {
-            console.error('Error loading PO document numbers:', error);
-            docNumSelect.innerHTML = '<option value="">Error Loading Documents</option>';
-            docNumSelect.disabled = true;
-        });
-}
-
-function getDocEntry(series, docNum) {
-    fetch('/api/get-doc-entry', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            series: series,
-            doc_num: docNum
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.doc_entry) {
-            document.getElementById('doc_entry').value = data.doc_entry;
-            document.getElementById('poValidationResult').innerHTML = 
-                '<div class="alert alert-success"><i data-feather="check-circle"></i> PO found! DocEntry: ' + data.doc_entry + '</div>';
-            document.getElementById('poValidationResult').style.display = 'block';
-            feather.replace();
-        } else {
+            console.error('Error getting DocEntry:', error);
             document.getElementById('doc_entry').value = '';
-            document.getElementById('poValidationResult').innerHTML = 
-                '<div class="alert alert-danger"><i data-feather="x-circle"></i> PO not found. Please check series and document number.</div>';
+            document.getElementById('poValidationResult').innerHTML =
+                '<div class="alert alert-danger"><i data-feather="x-circle"></i> Error validating PO. Please try again.</div>';
             document.getElementById('poValidationResult').style.display = 'block';
             feather.replace();
-        }
-    })
-    .catch(error => {
-        console.error('Error getting DocEntry:', error);
-        document.getElementById('doc_entry').value = '';
-        document.getElementById('poValidationResult').innerHTML = 
-            '<div class="alert alert-danger"><i data-feather="x-circle"></i> Error validating PO. Please try again.</div>';
-        document.getElementById('poValidationResult').style.display = 'block';
-        feather.replace();
-    });
-}
+        });
+    }
 </script>
 {% endblock %}
