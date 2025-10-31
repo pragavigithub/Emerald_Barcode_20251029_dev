@@ -190,8 +190,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Set the series dropdown
             document.getElementById('documentSeries').value = urlSeries;
             
-            // Set the document number
-            document.getElementById('documentNumber').value = urlDocNum;
+            // Load the open documents for this series to populate the dropdown
+            await loadOpenDocuments(urlSeries);
+            
+            // Now set the document number (dropdown is populated)
+            const docNumSelect = document.getElementById('documentNumber');
+            docNumSelect.value = urlDocNum;
+            docNumSelect.disabled = false;
             
             // Auto-load the document
             await loadCountingDocument();
