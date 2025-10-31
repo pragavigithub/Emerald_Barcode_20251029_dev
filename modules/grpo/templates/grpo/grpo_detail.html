@@ -1965,71 +1965,78 @@ function generateSerialQRLabels(itemId, itemCode, itemName) {
 
             // Wait for QRCode library then generate codes
             waitForQRCode((loaded) => {
-                serialNumbers.forEach((serial, index) => {
-                    const packNum = index + 1;
-                    const totalPacks = serialNumbers.length;
+                let totalLabelsGenerated = 0;
+                
+                serialNumbers.forEach((serial, serialIndex) => {
+                    const qtyPerPack = serial.qty_per_pack || 1;
+                    const numberOfPacks = serial.no_of_packs || 1;
                     
-                    // Generate comprehensive QR data with all requested fields in JSON format
-                    const qrDataObj = {
-                        'id': grpoDetails.doc_number || 'N/A',
-                        'po': grpoDetails.po_number || 'N/A',
-                        'item': itemCode,
-                        'SerialNumber': serial.internal_serial_number,
-                        'qty': 1,
-                        'pack': `${packNum} of ${totalPacks}`,
-                        'grn_date': grpoDetails.grn_date || 'N/A',
-                        'exp_date': serial.expiry_date || 'N/A'
-                    };
-                    
-                    // Convert to JSON format for QR code
-                    const qrData = JSON.stringify(qrDataObj);
+                    // Generate one QR code per pack based on no_of_packs
+                    for (let packNum = 1; packNum <= numberOfPacks; packNum++) {
+                        totalLabelsGenerated++;
+                        
+                        // Generate comprehensive QR data with all requested fields in JSON format
+                        const qrDataObj = {
+                            'id': grpoDetails.doc_number || 'N/A',
+                            'po': grpoDetails.po_number || 'N/A',
+                            'item': itemCode,
+                            'SerialNumber': serial.internal_serial_number,
+                            'qty': qtyPerPack,
+                            'pack': `${packNum} of ${numberOfPacks}`,
+                            'grn_date': grpoDetails.grn_date || 'N/A',
+                            'exp_date': serial.expiry_date || 'N/A'
+                        };
+                        
+                        // Convert to JSON format for QR code
+                        const qrData = JSON.stringify(qrDataObj);
 
-                    const qrDiv = document.createElement('div');
-                    qrDiv.className = 'qr-label-item col-md-4 mb-3';
+                        const qrDiv = document.createElement('div');
+                        qrDiv.className = 'qr-label-item col-md-4 mb-3';
 
-                    qrDiv.innerHTML = `
-                        <div class="text-center p-3 border rounded">
-                            <h6 class="mb-2"><strong>${itemCode}</strong></h6>
-                            <p class="mb-1 small">${itemName}</p>
-                            <div class="qr-code-container mb-2"></div>
-                            <p class="mb-1 small"><strong>${grpoDetails.doc_number || 'N/A'}</strong></p>
-                            <div class="small text-start">
-                                <strong>PO:</strong> ${grpoDetails.po_number || 'N/A'}<br>
-                                <strong>Serial:</strong> ${serial.internal_serial_number}<br>
-                                ${serial.manufacturer_serial_number ? `<strong>MFG:</strong> ${serial.manufacturer_serial_number}<br>` : ''}
-                                <strong>Qty:</strong> 1<br>
-                                <strong>Pack:</strong> ${packNum} of ${totalPacks}<br>
-                                <strong>GRN Date:</strong> ${grpoDetails.grn_date || 'N/A'}<br>
-                                <strong>Exp Date:</strong> ${serial.expiry_date || 'N/A'}
+                        qrDiv.innerHTML = `
+                            <div class="text-center p-3 border rounded">
+                                <h6 class="mb-2"><strong>${itemCode}</strong></h6>
+                                <p class="mb-1 small">${itemName}</p>
+                                <div class="qr-code-container mb-2"></div>
+                                <p class="mb-1 small"><strong>${grpoDetails.doc_number || 'N/A'}</strong></p>
+                                <div class="small text-start">
+                                    <strong>PO:</strong> ${grpoDetails.po_number || 'N/A'}<br>
+                                    <strong>Serial:</strong> ${serial.internal_serial_number}<br>
+                                    ${serial.manufacturer_serial_number ? `<strong>MFG:</strong> ${serial.manufacturer_serial_number}<br>` : ''}
+                                    <strong>Qty per Pack:</strong> ${qtyPerPack}<br>
+                                    <strong>Pack:</strong> ${packNum} of ${numberOfPacks}<br>
+                                    <strong>GRN Date:</strong> ${grpoDetails.grn_date || 'N/A'}<br>
+                                    <strong>Exp Date:</strong> ${serial.expiry_date || 'N/A'}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    container.appendChild(qrDiv);
+                        `;
+                        container.appendChild(qrDiv);
 
-                    // Get QR container for code generation
-                    const qrContainer = qrDiv.querySelector('.qr-code-container');
+                        // Get QR container for code generation
+                        const qrContainer = qrDiv.querySelector('.qr-code-container');
 
-                    // Generate QR code using qrcodejs
-                    if (loaded && typeof QRCode !== 'undefined') {
-                        try {
-                            new QRCode(qrContainer, {
-                                text: qrData,
-                                width: 150,
-                                height: 150,
-                                colorDark: '#000000',
-                                colorLight: '#ffffff',
-                                correctLevel: QRCode.CorrectLevel.H
-                            });
-                        } catch (error) {
-                            console.error('QR generation error:', error);
-                            qrContainer.innerHTML = `<p class="text-danger">Error generating QR: ${error.message}</p>`;
+                        // Generate QR code using qrcodejs
+                        if (loaded && typeof QRCode !== 'undefined') {
+                            try {
+                                new QRCode(qrContainer, {
+                                    text: qrData,
+                                    width: 150,
+                                    height: 150,
+                                    colorDark: '#000000',
+                                    colorLight: '#ffffff',
+                                    correctLevel: QRCode.CorrectLevel.H
+                                });
+                            } catch (error) {
+                                console.error('QR generation error:', error);
+                                qrContainer.innerHTML = `<p class="text-danger">Error generating QR: ${error.message}</p>`;
+                            }
+                        } else {
+                            qrContainer.innerHTML = `<p class="text-danger">QR library not loaded. Please do a hard refresh (Ctrl+Shift+R)</p>`;
                         }
-                    } else {
-                        qrContainer.innerHTML = `<p class="text-danger">QR library not loaded. Please do a hard refresh (Ctrl+Shift+R)</p>`;
                     }
                 });
 
-                console.log(`Generated ${serialNumbers.length} serial QR code labels`);
+                console.log(`Generated ${totalLabelsGenerated} serial QR code labels`);
                 modal.show();
             });
         })

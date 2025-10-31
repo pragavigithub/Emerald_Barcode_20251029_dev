@@ -569,7 +569,9 @@ def get_serial_numbers(item_id):
                 'manufacturer_serial_number': serial.manufacturer_serial_number,
                 'expiry_date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else None,
                 'manufacture_date': serial.manufacture_date.strftime('%Y-%m-%d') if serial.manufacture_date else None,
-                'notes': serial.notes
+                'notes': serial.notes,
+                'qty_per_pack': float(serial.qty_per_pack) if serial.qty_per_pack else 1.0,
+                'no_of_packs': serial.no_of_packs if serial.no_of_packs else 1
             })
         
         return jsonify({
@@ -609,7 +611,9 @@ def get_batch_numbers(item_id):
                 'quantity': float(batch.quantity),
                 'expiry_date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else None,
                 'manufacturer_serial_number': batch.manufacturer_serial_number,
-                'internal_serial_number': batch.internal_serial_number
+                'internal_serial_number': batch.internal_serial_number,
+                'qty_per_pack': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
+                'no_of_packs': batch.no_of_packs if batch.no_of_packs else 1
             })
         
         return jsonify({
