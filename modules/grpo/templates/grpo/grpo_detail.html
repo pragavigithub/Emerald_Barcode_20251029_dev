@@ -2068,9 +2068,10 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
             waitForQRCode((loaded) => {
                 batchNumbers.forEach((batch, batchIndex) => {
                     const receivedQty = Math.floor(batch.quantity);
-                    const numberOfPacks = receivedQty;
+                    const numberOfPacks = batch.no_of_packs || 1;
+                    const qtyPerPack = batch.qty_per_pack || receivedQty;
 
-                    // Generate one QR code per unit/pack of the received quantity
+                    // Generate one QR code per pack based on no_of_packs
                     for (let packNum = 1; packNum <= numberOfPacks; packNum++) {
                         totalLabelsGenerated++;
 
@@ -2083,7 +2084,7 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                             'po': grpoDetails.po_number,
                             'item': itemCode,
                             'batch': batch.batch_number,
-                            'qty': 1,
+                            'qty': qtyPerPack,
                             'pack': `${packNum} of ${numberOfPacks}`,
                             'grn_date': grpoDetails.grn_date,
                             'exp_date': batch.expiry_date || 'N/A'
@@ -2104,7 +2105,7 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
                                 <div class="small text-start">
                                     <strong>PO:</strong> ${grpoDetails.po_number}<br>
                                     <strong>Batch:</strong> ${batch.batch_number}<br>
-                                    <strong>Qty:</strong> 1<br>
+                                    <strong>Qty per Pack:</strong> ${qtyPerPack}<br>
                                     <strong>Pack:</strong> ${packNum} of ${numberOfPacks}<br>
                                     <strong>GRN Date:</strong> ${grpoDetails.grn_date}<br>
                                     <strong>Exp Date:</strong> ${batch.expiry_date || 'N/A'}
