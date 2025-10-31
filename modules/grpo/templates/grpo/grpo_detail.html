@@ -212,8 +212,8 @@
                                     <th>Qty per Pack</th>
                                     <th>No of Packs</th>
                                     <th>Warehouse</th>
-                                    <th>Batch</th>
-                                    <th>Expiry</th>
+<!--                                    <th>Batch</th>-->
+<!--                                    <th>Expiry</th>-->
                                     <th>QC Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -261,31 +261,31 @@
                                         <strong>{{ warehouse_code }}</strong>
                                         <br><small class="text-muted">{{ item.bin_location }}</small>
                                     </td>
-                                    <td>
-                                        {% if grpo_doc.status in ['draft', 'rejected'] %}
-                                        <input type="text" class="form-control form-control-sm"
-                                               value="{{ item.batch_number or '' }}"
-                                               placeholder="Batch number"
-                                               data-item-id="{{ item.id }}"
-                                               data-field="batch_number"
-                                               onchange="updateField(this)"
-                                               style="width: 120px;">
-                                        {% else %}
-                                        {{ item.batch_number or '-' }}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if grpo_doc.status in ['draft', 'rejected'] %}
-                                        <input type="date" class="form-control form-control-sm"
-                                               value="{{ item.expiration_date.strftime('%Y-%m-%d') if item.expiration_date else '' }}"
-                                               data-item-id="{{ item.id }}"
-                                               data-field="expiration_date"
-                                               onchange="updateField(this)"
-                                               style="width: 140px;">
-                                        {% else %}
-                                        {{ item.expiration_date.strftime('%Y-%m-%d') if item.expiration_date else '-' }}
-                                        {% endif %}
-                                    </td>
+<!--                                    <td>-->
+<!--                                        {% if grpo_doc.status in ['draft', 'rejected'] %}-->
+<!--                                        <input type="text" class="form-control form-control-sm"-->
+<!--                                               value="{{ item.batch_number or '' }}"-->
+<!--                                               placeholder="Batch number"-->
+<!--                                               data-item-id="{{ item.id }}"-->
+<!--                                               data-field="batch_number"-->
+<!--                                               onchange="updateField(this)"-->
+<!--                                               style="width: 120px;">-->
+<!--                                        {% else %}-->
+<!--                                        {{ item.batch_number or '-' }}-->
+<!--                                        {% endif %}-->
+<!--                                    </td>-->
+<!--                                    <td>-->
+<!--                                        {% if grpo_doc.status in ['draft', 'rejected'] %}-->
+<!--                                        <input type="date" class="form-control form-control-sm"-->
+<!--                                               value="{{ item.expiration_date.strftime('%Y-%m-%d') if item.expiration_date else '' }}"-->
+<!--                                               data-item-id="{{ item.id }}"-->
+<!--                                               data-field="expiration_date"-->
+<!--                                               onchange="updateField(this)"-->
+<!--                                               style="width: 140px;">-->
+<!--                                        {% else %}-->
+<!--                                        {{ item.expiration_date.strftime('%Y-%m-%d') if item.expiration_date else '-' }}-->
+<!--                                        {% endif %}-->
+<!--                                    </td>-->
 
                                     <td>
                                         {% if item.qc_status == 'pending' %}
