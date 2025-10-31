@@ -202,10 +202,14 @@ class MySQLConsolidatedMigration:
                     barcode TEXT,
                     quantity DECIMAL(15,3) DEFAULT 1.0,
                     base_line_number INT DEFAULT 0,
+                    grn_number VARCHAR(50),
+                    qty_per_pack DECIMAL(15,3) DEFAULT 1.0,
+                    no_of_packs INT DEFAULT 1,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (grpo_item_id) REFERENCES grpo_items(id) ON DELETE CASCADE,
                     INDEX idx_grpo_item_id (grpo_item_id),
-                    INDEX idx_internal_serial (internal_serial_number)
+                    INDEX idx_internal_serial (internal_serial_number),
+                    INDEX idx_grpo_serial_grn (grn_number)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''',
             
@@ -221,10 +225,14 @@ class MySQLConsolidatedMigration:
                     internal_serial_number VARCHAR(100),
                     expiry_date DATE,
                     barcode TEXT,
+                    grn_number VARCHAR(50),
+                    qty_per_pack DECIMAL(15,3),
+                    no_of_packs INT DEFAULT 1,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (grpo_item_id) REFERENCES grpo_items(id) ON DELETE CASCADE,
                     INDEX idx_grpo_item_id (grpo_item_id),
-                    INDEX idx_batch_number (batch_number)
+                    INDEX idx_batch_number (batch_number),
+                    INDEX idx_grpo_batch_grn (grn_number)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''',
             
