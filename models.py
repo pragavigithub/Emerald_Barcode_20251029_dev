@@ -349,9 +349,9 @@ class SAPInventoryCount(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     doc_entry = db.Column(db.Integer, nullable=False, unique=True, index=True)
-    doc_number = db.Column(db.Integer, nullable=False)
+    doc_number = db.Column(db.Integer, nullable=True)
     series = db.Column(db.Integer, nullable=False)
-    count_date = db.Column(db.DateTime, nullable=True)
+    count_date = db.Column(db.String(50), nullable=True)
     counting_type = db.Column(db.String(50), nullable=True)
     count_time = db.Column(db.String(10), nullable=True)
     single_counter_type = db.Column(db.String(50), nullable=True)
@@ -364,8 +364,8 @@ class SAPInventoryCount(db.Model):
     counter_id = db.Column(db.Integer, nullable=True)
     multiple_counter_role = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    loaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    loaded_at = db.Column(db.String(50), nullable=True)
+    last_updated_at = db.Column(db.String(50), nullable=True)
 
     # Relationships
     user = relationship('User', foreign_keys=[user_id])
