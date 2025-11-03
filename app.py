@@ -187,6 +187,14 @@ except Exception as e:
     app.config['DUAL_DB'] = None
     logging.info("💡 MySQL sync disabled, using single database mode")
 
+# Validate and create SAP B1 SQL Queries on startup
+try:
+    from sap_query_manager import validate_sap_queries
+    validate_sap_queries(app)
+except Exception as e:
+    logging.warning(f"⚠️ SAP query validation skipped: {e}")
+    logging.info("💡 Application will continue without SAP query validation")
+
 # Import and register blueprints
 from modules.inventory_transfer.routes import transfer_bp
 from modules.serial_item_transfer.routes import serial_item_bp

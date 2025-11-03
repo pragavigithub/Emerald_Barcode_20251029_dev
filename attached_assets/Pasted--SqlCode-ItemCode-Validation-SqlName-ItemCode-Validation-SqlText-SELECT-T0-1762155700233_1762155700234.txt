@@ -1,0 +1,114 @@
+{
+   "SqlCode":"ItemCode_Validation",
+   "SqlName":"ItemCode_Validation",
+   "SqlText":"SELECT T0.[ItemCode],T0.[itemName], T0.[DistNumber], T1.[WhsCode] FROM [OSRN] T0  INNER JOIN [OSRQ] T1 ON T0.[AbsEntry] =T1.[MdAbsEntry] WHERE  T1.[Quantity] >'0' AND T0.[ItemCode]=:item_code AND T1.[WhsCode]=:whcode"
+}
+
+{
+   "SqlCode":"ItemCode_Batch_Serial_Val",
+   "SqlName":"ItemCode_Batch_Serial_Val",
+   "SqlText":"Select T0.[ItemCode], IsNULL(T0.[ManBtchNum],'N') as [BatchNum] ,IsNULL(T0.[ManSerNum],'N') as [SerialNum],IsNULL(T0.[MngMethod],'N')  as [NonBatch_NonSerialMethod] FROM [OITM] T0 WHERE T0.[ItemCode]=:itemCode"
+}
+
+{
+   "SqlCode":"GetSerialManagedItemWH",
+   "SqlName":"GetSerialManagedItemWH1",
+   "SqlText":"SELECT DISTINCT OSRN.[ItemCode] AS [itemCode], OSRN.[DistNumber] AS [SerialNumber], OSRQ.[WhsCode] AS [WarehouseCode], OWHS.[WhsName] AS [WarehouseName], OSRQ.[Quantity] AS [AvailableQty], OSRN.[SysNumber] FROM [OSRN] AS OSRN INNER JOIN [OSRQ] AS OSRQ ON OSRN.[SysNumber] = OSRQ.[SysNumber] AND OSRN.[ItemCode] = OSRQ.[ItemCode] INNER JOIN [OWHS] AS OWHS ON OSRQ.[WhsCode] = OWHS.[WhsCode] WHERE OSRN.[ItemCode] = :itemCode AND OSRQ.[Quantity] > 0 ORDER BY OSRN.[DistNumber]"
+}
+
+{
+   "SqlCode":"GetNonSerialNonBatchManagedItemWH",
+   "SqlName":"GetNonSerialNonBatchManagedItemWH",
+   "SqlText":"SELECT OITM.[ItemCode], OITM.[ItemName], OITW.[WhsCode] AS [WarehouseCode], OWHS.[WhsName] AS [WarehouseName], OITW.[OnHand] AS [AvailableQty] FROM [OITM] AS OITM INNER JOIN [OITW] AS OITW ON OITM.[ItemCode] = OITW.[ItemCode] INNER JOIN [OWHS] AS OWHS ON OITW.[WhsCode] = OWHS.[WhsCode] WHERE OITM.[ItemCode] = :itemCode AND OITW.[OnHand] > 0"
+}
+
+
+
+{
+   "SqlCode":"GetBatchManagedItemWH",
+   "SqlName":"GetBatchManagedItemWH",
+   "SqlText":"SELECT DISTINCT OBTN.[ItemCode] AS [itemCode], OBTN.[DistNumber] AS [BatchNumber], OBTQ.[WhsCode] AS [WarehouseCode], OWHS.[WhsName] AS [WarehouseName], OBTQ.[Quantity] AS [AvailableQty], OBTN.[SysNumber] FROM [OBTN] AS OBTN INNER JOIN [OBTQ] AS OBTQ ON OBTN.[SysNumber] = OBTQ.[SysNumber] AND OBTN.[ItemCode] = OBTQ.[ItemCode] INNER JOIN [OWHS] AS OWHS ON OBTQ.[WhsCode] = OWHS.[WhsCode] WHERE OBTN.[ItemCode] = :itemCode AND OBTQ.[Quantity] > 0 ORDER BY OBTN.[DistNumber]"
+}
+
+{
+   "SqlCode":"Get_SO_Series",
+   "SqlName":"Get_SO_Series",
+   "SqlText":"SELECT T0.[SeriesName], T0.[Series] FROM [NNM1] T0 WHERE T0.[ObjectCode] = '17'"
+}
+
+{
+   "SqlCode":"Get_SO_Details",
+   "SqlName":"Get_SO_Details",
+   "SqlText":"SELECT T0.[DocEntry] FROM [ORDR] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE T0.[DocNum] =:SONumber AND  T1.[Series]=:Series"
+}
+
+{
+   "SqlCode":"Get_PO_Series",
+   "SqlName":"Get_PO_Series",
+   "SqlText":"SELECT T0.[Series], T0.[SeriesName] FROM [NNM1] T0 WHERE T0.[ObjectCode] = '22' ORDER BY T0.[SeriesName]"
+}
+
+
+
+
+
+
+{
+   "SqlCode":"Get_PO_DocEntry",
+   "SqlName":"Get_PO_DocEntry",
+   "SqlText":"SELECT [DocEntry] FROM [OPOR] WHERE [Series] =:series AND [DocNum] =:docNum"
+}
+
+{
+   "SqlCode":"Get_Open_SO_DocNum",
+   "SqlName":"Get_Open_SO_DocNum",
+   "SqlText":"SELECT T0.[DocEntry],T0.[DocNum],T0.[CardCode],T0.[CardName],T0.[DocStatus] FROM [ORDR] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE T0.[Series] = :series AND T0.[DocStatus] = 'O' ORDER BY T0.[DocEntry]"
+}
+
+{
+   "SqlCode":"Get_Open_PO_DocNum",
+   "SqlName":"Get_Open_PO_DocNum",
+   "SqlText":"SELECT T0.[DocEntry],T0.[DocNum],T0.[Series],T1.[SeriesName],T0.[CardCode],T0.[CardName] FROM [OPOR] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE  T0.[DocStatus] = 'O' AND T0.[Series] =:series ORDER BY T0.[DocNum]"
+}
+
+{
+   "SqlCode":"Get_Open_INVTRNF_DocNum",
+   "SqlName":"Get_Open_INVTRNF_DocNum",
+   "SqlText":"SELECT T0.[DocEntry],T0.[DocNum],T0.[Series],T1.[SeriesName] FROM [OWTQ] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] WHERE T0.[Series] =:series AND T0.[DocStatus] = 'O' ORDER BY T0.[DocNum]"
+}
+
+
+
+
+
+
+{
+   "SqlCode":"Get_Open_INVCNT_DocNum",
+   "SqlName":"Get_Open_INVCNT_DocNum",
+   "SqlText":"SELECT T0.[DocEntry],T0.[DocNum],T1.[SeriesName],T0.[CountDate],T0.[Status] FROM [OINC] T0 INNER JOIN [NNM1] T1 ON T0.[Series] = T1.[Series] LEFT JOIN [OUSR] T2 ON T0.[UserSign] = T2.[USERID] WHERE T0.[Series] = :series AND T0.[Status] = 'O' ORDER BY T0.[CountDate] DESC, T0.[DocNum]"
+}
+
+{
+   "SqlCode":"Get_INVT_DocEntry",
+   "SqlName":"Get_INVT_DocEntry",
+   "SqlText":"SELECT T0.[DocEntry] FROM [OWTQ] T0 WHERE T0.[Series] = :series AND T0.[DocNum] = :docNum"
+}
+
+{
+   "SqlCode":"Get_INVT_Series",
+   "SqlName":"Get_INVT_Series",
+   "SqlText":"SELECT T0.[Series],T0.[SeriesName] FROM [NNM1] T0 WHERE T0.[ObjectCode] = '1250000001' ORDER BY T0.[SeriesName]"
+}
+
+{
+   "SqlCode":"Get_INVCNT_DocEntry",
+   "SqlName":"Get_INVCNT_DocEntry",
+   "SqlText":"SELECT C.[DocEntry] FROM [OINC] C INNER JOIN [NNM1] S ON C.[Series] = S.[Series] WHERE C.[Series] =:series AND C.[DocNum] =:docNum"
+}
+
+{
+   "SqlCode":"Get_INVCNT_Series",
+   "SqlName":"Get_INVCNT_Series",
+   "SqlText":"SELECT n.[Series],n.[SeriesName] FROM [NNM1] n WHERE n.[ObjectCode] = '1470000065' ORDER BY n.[SeriesName]"
+}
+

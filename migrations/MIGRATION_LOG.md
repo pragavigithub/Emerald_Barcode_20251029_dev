@@ -37,6 +37,61 @@ This file tracks all database schema changes chronologically. Each migration rep
 ## Future Migrations
 Add new migrations below in reverse chronological order (newest first).
 
+### 2025-11-02 - SAP B1 SQL Queries Auto-Validation Feature
+- **File**: `migrations/mysql/changes/2025-11-02_sap_sql_queries_auto_validation.sql`
+- **Description**: Implemented automatic validation and creation of required SAP B1 SQL queries on application startup
+- **Status**: ✅ Applied
+- **Applied By**: Replit Agent
+- **Changes**:
+  - **New Module**: Created `sap_query_manager.py` - SAP B1 SQL Query Manager
+    - Validates 17 required SQL queries on application startup
+    - Automatically creates missing queries via SAP B1 Service Layer API
+    - Provides detailed logging of query validation results
+    - Gracefully handles SAP connection failures without blocking app startup
+  - **Application Integration**:
+    - Integrated into `app.py` startup sequence after database initialization
+    - Runs after dual database support and before blueprint registration
+    - Non-blocking - application continues if SAP validation fails
+  - **SQL Queries Managed** (17 total):
+    - **Item Validation**: ItemCode_Validation, ItemCode_Batch_Serial_Val
+    - **Inventory Queries**: GetSerialManagedItemWH, GetBatchManagedItemWH, GetNonSerialNonBatchManagedItemWH
+    - **Document Series**: Get_SO_Series, Get_PO_Series, Get_INVT_Series, Get_INVCNT_Series
+    - **Document Lookup**: Get_SO_Details, Get_PO_DocEntry, Get_INVT_DocEntry, Get_INVCNT_DocEntry
+    - **Open Documents**: Get_Open_SO_DocNum, Get_Open_PO_DocNum, Get_Open_INVTRNF_DocNum, Get_Open_INVCNT_DocNum
+  - **API Endpoints Used**:
+    - GET `/b1s/v1/SQLQueries('{SqlCode}')` - Check if query exists
+    - POST `/b1s/v1/SQLQueries` - Create new query
+  - **Logging Output**:
+    - Reports existing, created, and failed query counts
+    - Provides detailed info for each query validation step
+- **Configuration**:
+  - Uses existing SAP B1 environment variables from app.config:
+    - SAP_B1_SERVER, SAP_B1_USERNAME, SAP_B1_PASSWORD, SAP_B1_COMPANY_DB
+  - Requires no additional configuration
+- **Workflow**:
+  1. App starts → Database initialized → Dual DB support configured
+  2. SAP Query Manager initializes and logs into SAP B1
+  3. Checks each of 17 queries for existence
+  4. Creates any missing queries via Service Layer POST
+  5. Logs results summary and logs out
+  6. App continues startup regardless of SAP availability
+- **Error Handling**:
+  - Graceful degradation if SAP B1 is unavailable
+  - Application continues startup without SAP query validation
+  - All errors logged with warning level
+- **Benefits**:
+  - Eliminates manual SQL query setup in SAP B1
+  - Ensures WMS application has required queries available
+  - Supports multi-environment deployments (dev, staging, prod)
+  - Self-healing - recreates queries if accidentally deleted
+- **Database Requirements**: None - queries stored in SAP B1, not MySQL/PostgreSQL
+- **Notes**: 
+  - Documentation file serves as reference for all managed queries
+  - To add new queries: update `required_queries` list in sap_query_manager.py
+  - All queries use SAP B1 parameter syntax (:paramName)
+  - Queries are read-only SELECT statements
+  - SSL verification disabled for SAP B1 API calls (uses verify=False)
+
 ### 2025-10-28 - GRPO Comprehensive QR Label System for Batch Items
 - **Files**: `modules/grpo/routes.py`, `modules/grpo/templates/grpo/grpo_detail.html`
 - **Description**: Complete overhaul of QR label generation for batch items - now generates multiple QR codes based on received quantity with comprehensive tracking information
