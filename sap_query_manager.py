@@ -242,6 +242,7 @@ def validate_sap_queries(app, force=None):
     """
     import os
     from datetime import datetime
+    import hashlib
     
     flag_file = '.local/state/sap_queries_validated.flag'
     
@@ -251,22 +252,35 @@ def validate_sap_queries(app, force=None):
     try:
         os.makedirs(os.path.dirname(flag_file), exist_ok=True)
         
-        if not force and os.path.exists(flag_file):
-            with open(flag_file, 'r') as f:
-                flag_content = f.read()
-            logging.info("✅ SQL query validation already attempted on initial startup - skipping")
-            logging.info(f"💡 Flag file details: {flag_content.strip()}")
-            logging.info("💡 To force re-validation, set FORCE_SAP_VALIDATION=true or delete: .local/state/sap_queries_validated.flag")
-            return True
-        
         server = app.config.get('SAP_B1_SERVER')
         username = app.config.get('SAP_B1_USERNAME')
         password = app.config.get('SAP_B1_PASSWORD')
         company_db = app.config.get('SAP_B1_COMPANY_DB')
         
+        current_db_hash = hashlib.md5(f"{company_db}".encode()).hexdigest()[:8] if company_db else "none"
+        
+        if not force and os.path.exists(flag_file):
+            with open(flag_file, 'r') as f:
+                flag_content = f.read()
+            
+            previous_db_hash = None
+            for line in flag_content.split('\n'):
+                if line.startswith('Database:'):
+                    previous_db_hash = line.split(':', 1)[1].strip()
+                    break
+            
+            if previous_db_hash and previous_db_hash != current_db_hash:
+                logging.info("🔄 Database changed - re-running SQL query validation for new database")
+            else:
+                logging.info("✅ SQL query validation already attempted on initial startup - skipping")
+                logging.info(f"💡 Flag file details: {flag_content.strip()}")
+                logging.info("💡 To force re-validation, set FORCE_SAP_VALIDATION=true or delete: .local/state/sap_queries_validated.flag")
+                return True
+        
         if not all([server, username, password, company_db]):
             with open(flag_file, 'w') as f:
                 f.write(f"Status: skipped - SAP B1 credentials not configured\n")
+                f.write(f"Database: {current_db_hash}\n")
                 f.write(f"Timestamp: {datetime.now().isoformat()}\n")
             logging.warning("⚠️ SAP B1 credentials not configured - skipping SQL query validation")
             logging.info("✅ Flag file created - will skip on future restarts")
@@ -279,12 +293,14 @@ def validate_sap_queries(app, force=None):
         with open(flag_file, 'w') as f:
             if result:
                 f.write(f"Status: completed successfully\n")
+                f.write(f"Database: {current_db_hash}\n")
                 f.write(f"Timestamp: {datetime.now().isoformat()}\n")
                 logging.info("✅ SQL query validation completed - flag file created, will skip on future restarts")
             else:
                 f.write(f"Status: attempted but failed (SAP connection issue)\n")
+                f.write(f"Database: {current_db_hash}\n")
                 f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-                f.write(f"Note: Validation was attempted once. Will not retry on restarts.\n")
+                f.write(f"Note: Validation was attempted once. Will not retry on restarts unless database changes.\n")
                 logging.warning("⚠️ SQL query validation failed (likely SAP connection unavailable)")
                 logging.info("✅ Flag file created - will skip retry on future restarts to avoid repeated failures")
         
@@ -292,8 +308,10 @@ def validate_sap_queries(app, force=None):
         
     except Exception as e:
         try:
+            current_db_hash = hashlib.md5(f"{company_db}".encode()).hexdigest()[:8] if 'company_db' in locals() and company_db else "none"
             with open(flag_file, 'w') as f:
                 f.write(f"Status: error during validation\n")
+                f.write(f"Database: {current_db_hash}\n")
                 f.write(f"Timestamp: {datetime.now().isoformat()}\n")
                 f.write(f"Error: {str(e)}\n")
         except:
