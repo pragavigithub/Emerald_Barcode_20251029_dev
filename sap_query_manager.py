@@ -232,9 +232,23 @@ class SAPQueryManager:
             self.logout()
 
 
-def validate_sap_queries(app):
-    """Initialize and validate SAP B1 queries on app startup"""
+def validate_sap_queries(app, force=False):
+    """Initialize and validate SAP B1 queries on app startup
+    
+    Args:
+        app: Flask application instance
+        force: If True, run validation even if it was already done before
+    """
+    import os
+    
+    flag_file = '.local/state/sap_queries_validated.flag'
+    
     try:
+        if not force and os.path.exists(flag_file):
+            logging.info("✅ SQL query validation already completed on initial startup - skipping")
+            logging.info("💡 To force re-validation, delete the flag file: .local/state/sap_queries_validated.flag")
+            return True
+        
         server = app.config.get('SAP_B1_SERVER')
         username = app.config.get('SAP_B1_USERNAME')
         password = app.config.get('SAP_B1_PASSWORD')
@@ -244,8 +258,18 @@ def validate_sap_queries(app):
             logging.warning("⚠️ SAP B1 credentials not configured - skipping SQL query validation")
             return False
         
+        logging.info("🔄 Running SQL query validation (initial startup)...")
         manager = SAPQueryManager(server, username, password, company_db)
-        return manager.validate_and_create_queries()
+        result = manager.validate_and_create_queries()
+        
+        if result:
+            os.makedirs(os.path.dirname(flag_file), exist_ok=True)
+            with open(flag_file, 'w') as f:
+                from datetime import datetime
+                f.write(f"SQL query validation completed at: {datetime.now().isoformat()}\n")
+            logging.info("✅ SQL query validation flag file created - will skip on future restarts")
+        
+        return result
         
     except Exception as e:
         logging.error(f"❌ Error during SAP query validation: {e}")
