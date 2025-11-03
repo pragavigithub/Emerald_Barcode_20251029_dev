@@ -5,8 +5,14 @@ A Flask-based Warehouse Management System (WMS) designed to streamline inventory
 
 ## User Preferences
 *   Keep MySQL migration files updated when database schema changes occur
+*   SQL query validation should only run on initial startup, not on every application restart
 
-## Recent Changes (2025-10-31)
+## Recent Changes
+
+### 2025-11-03
+*   **Optimized SAP SQL Query Validation**: Modified SAP B1 SQL query validation to run only on initial startup instead of every restart, improving startup performance and avoiding repeated connection attempts when SAP is unavailable. Implemented flag-based system at `.local/state/sap_queries_validated.flag` that records validation attempts (success/failure) and prevents re-runs on subsequent restarts. Added `FORCE_SAP_VALIDATION` environment variable to allow manual re-validation when needed.
+
+### 2025-10-31
 *   **Fixed Inventory Counting UI Issue**: Resolved issue where SAP Inventory Counting documents (counted and posted) were not displaying in the UI. Added dashboard statistics card, recent activities section, and comprehensive history page (`/inventory_counting_history`) to view all counted documents with filtering capabilities.
 
 ## System Architecture
