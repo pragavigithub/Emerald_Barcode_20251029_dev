@@ -5,8 +5,10 @@ Validates and creates required SQL queries in SAP B1 database on application sta
 
 import logging
 import requests
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import urllib3
+
+# Disable SSL warnings for SAP B1 connections
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class SAPQueryManager:
     """Manages SAP B1 SQL Queries - validates existence and creates if missing"""
