@@ -232,21 +232,31 @@ class SAPQueryManager:
             self.logout()
 
 
-def validate_sap_queries(app, force=False):
+def validate_sap_queries(app, force=None):
     """Initialize and validate SAP B1 queries on app startup
     
     Args:
         app: Flask application instance
-        force: If True, run validation even if it was already done before
+        force: If True, run validation even if it was already attempted
+               If None, checks FORCE_SAP_VALIDATION environment variable
     """
     import os
+    from datetime import datetime
     
     flag_file = '.local/state/sap_queries_validated.flag'
     
+    if force is None:
+        force = os.environ.get('FORCE_SAP_VALIDATION', '').lower() in ('true', '1', 'yes')
+    
     try:
+        os.makedirs(os.path.dirname(flag_file), exist_ok=True)
+        
         if not force and os.path.exists(flag_file):
-            logging.info("✅ SQL query validation already completed on initial startup - skipping")
-            logging.info("💡 To force re-validation, delete the flag file: .local/state/sap_queries_validated.flag")
+            with open(flag_file, 'r') as f:
+                flag_content = f.read()
+            logging.info("✅ SQL query validation already attempted on initial startup - skipping")
+            logging.info(f"💡 Flag file details: {flag_content.strip()}")
+            logging.info("💡 To force re-validation, set FORCE_SAP_VALIDATION=true or delete: .local/state/sap_queries_validated.flag")
             return True
         
         server = app.config.get('SAP_B1_SERVER')
@@ -255,22 +265,39 @@ def validate_sap_queries(app, force=False):
         company_db = app.config.get('SAP_B1_COMPANY_DB')
         
         if not all([server, username, password, company_db]):
+            with open(flag_file, 'w') as f:
+                f.write(f"Status: skipped - SAP B1 credentials not configured\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
             logging.warning("⚠️ SAP B1 credentials not configured - skipping SQL query validation")
+            logging.info("✅ Flag file created - will skip on future restarts")
             return False
         
-        logging.info("🔄 Running SQL query validation (initial startup)...")
+        logging.info("🔄 Running SQL query validation (initial startup attempt)...")
         manager = SAPQueryManager(server, username, password, company_db)
         result = manager.validate_and_create_queries()
         
-        if result:
-            os.makedirs(os.path.dirname(flag_file), exist_ok=True)
-            with open(flag_file, 'w') as f:
-                from datetime import datetime
-                f.write(f"SQL query validation completed at: {datetime.now().isoformat()}\n")
-            logging.info("✅ SQL query validation flag file created - will skip on future restarts")
+        with open(flag_file, 'w') as f:
+            if result:
+                f.write(f"Status: completed successfully\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                logging.info("✅ SQL query validation completed - flag file created, will skip on future restarts")
+            else:
+                f.write(f"Status: attempted but failed (SAP connection issue)\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                f.write(f"Note: Validation was attempted once. Will not retry on restarts.\n")
+                logging.warning("⚠️ SQL query validation failed (likely SAP connection unavailable)")
+                logging.info("✅ Flag file created - will skip retry on future restarts to avoid repeated failures")
         
         return result
         
     except Exception as e:
+        try:
+            with open(flag_file, 'w') as f:
+                f.write(f"Status: error during validation\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                f.write(f"Error: {str(e)}\n")
+        except:
+            pass
         logging.error(f"❌ Error during SAP query validation: {e}")
+        logging.info("✅ Flag file created - will skip retry on future restarts")
         return False
