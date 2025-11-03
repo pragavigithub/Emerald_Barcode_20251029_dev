@@ -37,6 +37,41 @@ This file tracks all database schema changes chronologically. Each migration rep
 ## Future Migrations
 Add new migrations below in reverse chronological order (newest first).
 
+### 2025-11-03 - GRPO Non-Managed Items Support
+- **File**: `mysql/changes/2025-11-03_grpo_non_managed_items.sql`
+- **Description**: Added support for non-batch, non-serial managed items in GRPO module with number of bags and QR label generation
+- **Tables Created**: 
+  - `grpo_non_managed_items` - Non-managed items tracking (when both BatchNum='N' and SerialNum='N')
+- **Status**: ✅ Applied
+- **Applied By**: Replit Agent
+- **Changes**:
+  - **grpo_non_managed_items Table**:
+    - `id` INT AUTO_INCREMENT PRIMARY KEY
+    - `grpo_item_id` INT NOT NULL (FK to grpo_items)
+    - `quantity` DECIMAL(15,3) NOT NULL - Item quantity
+    - `base_line_number` INT DEFAULT 0 - Line number for SAP posting
+    - `expiry_date` DATE - Item expiry date
+    - `grn_number` VARCHAR(50) - Unique GRN number for tracking
+    - `qty_per_pack` DECIMAL(15,3) - Quantity per pack/bag
+    - `no_of_packs` INT DEFAULT 1 - Number of packs/bags
+    - `created_at` TIMESTAMP - Creation timestamp
+  - **Indexes Added**:
+    - `idx_grpo_item_id` on grpo_item_id
+    - `idx_grn_number` on grn_number
+    - `idx_created_at` on created_at
+- **Application Integration**:
+  - Model class `GRPONonManagedItem` added to `modules/grpo/models.py`
+  - Supports QR code generation with PO Number, Quantity, ItemCode, GRN Number, GRN Date, ExpiryDate in JSON format
+  - Number of bags input determines how many QR labels are generated (similar to batch items)
+- **SAP B1 Integration**:
+  - Uses API endpoint `SQLQueries('ItemCode_Batch_Serial_Val')/List` to detect non-managed items
+  - When both `BatchNum='N'` and `SerialNum='N'`, item is treated as non-managed
+- **Notes**: 
+  - Enables complete inventory tracking for non-serialized, non-batch items
+  - QR labels contain same information as batch items for consistency
+
+---
+
 ### 2025-11-02 - SAP B1 SQL Queries Auto-Validation Feature
 - **File**: `migrations/mysql/changes/2025-11-02_sap_sql_queries_auto_validation.sql`
 - **Description**: Implemented automatic validation and creation of required SAP B1 SQL queries on application startup

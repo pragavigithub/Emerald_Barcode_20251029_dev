@@ -127,3 +127,20 @@ class GRPOBatchNumber(db.Model):
     
     # Relationships
     grpo_item = db.relationship('GRPOItem', backref=db.backref('batch_numbers', lazy=True, cascade='all, delete-orphan'))
+
+class GRPONonManagedItem(db.Model):
+    """Non-batch, Non-serial managed items for GRPO (when both BatchNum='N' and SerialNum='N')"""
+    __tablename__ = 'grpo_non_managed_items'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    grpo_item_id = db.Column(db.Integer, db.ForeignKey('grpo_items.id'), nullable=False)
+    quantity = db.Column(db.Numeric(15, 3), nullable=False)
+    base_line_number = db.Column(db.Integer, default=0)
+    expiry_date = db.Column(db.Date)
+    grn_number = db.Column(db.String(50))
+    qty_per_pack = db.Column(db.Numeric(15, 3))
+    no_of_packs = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    grpo_item = db.relationship('GRPOItem', backref=db.backref('non_managed_items', lazy=True, cascade='all, delete-orphan'))

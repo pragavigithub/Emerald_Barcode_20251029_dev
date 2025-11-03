@@ -5,7 +5,7 @@ All routes related to goods receipt against purchase orders
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from app import db
-from modules.grpo.models import GRPODocument, GRPOItem, GRPOSerialNumber, GRPOBatchNumber
+from modules.grpo.models import GRPODocument, GRPOItem, GRPOSerialNumber, GRPOBatchNumber, GRPONonManagedItem
 from models import User
 from sap_integration import SAPIntegration
 import logging
@@ -482,6 +482,38 @@ def add_grpo_item(grpo_id):
                 return redirect(url_for('grpo.detail', grpo_id=grpo_id))
             except Exception as e:
                 flash(f'Error processing batch numbers: {str(e)}', 'error')
+                db.session.rollback()
+                return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+        
+        # **NON-MANAGED ITEM HANDLING** (when both BatchNum='N' and SerialNum='N')
+        if not is_batch_managed and not is_serial_managed:
+            try:
+                # For non-managed items, create records based on number_of_bags
+                # Each bag will get a unique GRN number and QR code
+                qty_per_pack = quantity / number_of_bags if number_of_bags > 0 else quantity
+                no_of_packs = number_of_bags
+                
+                # Generate a non-managed item record for each bag
+                for idx in range(number_of_bags):
+                    # Generate unique GRN number for this pack/bag
+                    grn_number = generate_unique_grn_number(grpo, idx + 1)
+                    
+                    non_managed_item = GRPONonManagedItem(
+                        grpo_item_id=grpo_item.id,
+                        quantity=qty_per_pack,
+                        base_line_number=idx,
+                        expiry_date=expiry_date_obj,
+                        grn_number=grn_number,
+                        qty_per_pack=qty_per_pack,
+                        no_of_packs=no_of_packs
+                    )
+                    db.session.add(non_managed_item)
+                    logging.info(f"✅ Created non-managed item pack {idx + 1} of {no_of_packs} with GRN {grn_number} (Qty per pack: {qty_per_pack})")
+                
+                logging.info(f"✅ Added non-managed item {item_code} with {no_of_packs} packs (Qty per pack: {qty_per_pack})")
+                
+            except Exception as e:
+                flash(f'Error processing non-managed item: {str(e)}', 'error')
                 db.session.rollback()
                 return redirect(url_for('grpo.detail', grpo_id=grpo_id))
         
@@ -1085,38 +1117,86 @@ def generate_barcode_labels_api():
                 }
                 labels.append(label)
         
-        else:  # Regular non-serial/non-batch items
-            # Generate a single label for non-managed items
-            qr_data = {
-                'PO': po_number,
-                'ItemCode': item.item_code,
-                'Qty': float(item.quantity),
-                'Pack': '1 of 1',
-                'GRN Date': grn_date,
-                'Exp Date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
-                'ItemDesc': item.item_name or '',
-                'id': doc_number
-            }
+        else:  # Regular non-serial/non-batch items (non-managed items)
+            # Check if there are non_managed_items records (number of bags > 1)
+            non_managed_items = item.non_managed_items
             
-            # Convert to QR code friendly format
-            qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
-            qr_code_image = generate_barcode(qr_text)
-            
-            label = {
-                'sequence': 1,
-                'total': 1,
-                'pack_text': '1 of 1',
-                'po_number': po_number,
-                'quantity': float(item.quantity),
-                'grn_date': grn_date,
-                'expiration_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
-                'item_code': item.item_code,
-                'item_name': item.item_name or '',
-                'doc_number': doc_number,
-                'qr_code_image': qr_code_image,
-                'qr_data': qr_data
-            }
-            labels.append(label)
+            if non_managed_items and len(non_managed_items) > 0:
+                # Generate labels for each bag/pack
+                total_packs = len(non_managed_items)
+                
+                for idx, non_managed in enumerate(non_managed_items, start=1):
+                    # Use the unique GRN number for this pack
+                    pack_grn = non_managed.grn_number or doc_number
+                    
+                    qr_data = {
+                        'PO': po_number,
+                        'ItemCode': item.item_code,
+                        'Qty': float(non_managed.qty_per_pack) if non_managed.qty_per_pack else float(non_managed.quantity),
+                        'Pack': f"{idx} of {non_managed.no_of_packs or total_packs}",
+                        'GRN': pack_grn,
+                        'GRN Date': grn_date,
+                        'Exp Date': non_managed.expiry_date.strftime('%Y-%m-%d') if non_managed.expiry_date else 'N/A',
+                        'ItemDesc': item.item_name or ''
+                    }
+                    
+                    # Convert to JSON format for QR code as requested by user
+                    import json
+                    qr_text = json.dumps(qr_data, indent=2)
+                    qr_code_image = generate_barcode(qr_text)
+                    
+                    label = {
+                        'sequence': idx,
+                        'total': non_managed.no_of_packs or total_packs,
+                        'pack_text': f"{idx} of {non_managed.no_of_packs or total_packs}",
+                        'po_number': po_number,
+                        'quantity': float(non_managed.quantity),
+                        'qty_per_pack': float(non_managed.qty_per_pack) if non_managed.qty_per_pack else float(non_managed.quantity),
+                        'no_of_packs': non_managed.no_of_packs or total_packs,
+                        'grn_date': grn_date,
+                        'grn_number': pack_grn,
+                        'expiration_date': non_managed.expiry_date.strftime('%Y-%m-%d') if non_managed.expiry_date else 'N/A',
+                        'item_code': item.item_code,
+                        'item_name': item.item_name or '',
+                        'doc_number': pack_grn,
+                        'qr_code_image': qr_code_image,
+                        'qr_data': qr_data
+                    }
+                    labels.append(label)
+            else:
+                # Fallback: Generate a single label for items without bag records
+                qr_data = {
+                    'PO': po_number,
+                    'ItemCode': item.item_code,
+                    'Qty': float(item.quantity),
+                    'Pack': '1 of 1',
+                    'GRN': doc_number,
+                    'GRN Date': grn_date,
+                    'Exp Date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
+                    'ItemDesc': item.item_name or ''
+                }
+                
+                # Convert to JSON format for QR code
+                import json
+                qr_text = json.dumps(qr_data, indent=2)
+                qr_code_image = generate_barcode(qr_text)
+                
+                label = {
+                    'sequence': 1,
+                    'total': 1,
+                    'pack_text': '1 of 1',
+                    'po_number': po_number,
+                    'quantity': float(item.quantity),
+                    'grn_date': grn_date,
+                    'grn_number': doc_number,
+                    'expiration_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'N/A',
+                    'item_code': item.item_code,
+                    'item_name': item.item_name or '',
+                    'doc_number': doc_number,
+                    'qr_code_image': qr_code_image,
+                    'qr_data': qr_data
+                }
+                labels.append(label)
         
         return jsonify({
             'success': True,
