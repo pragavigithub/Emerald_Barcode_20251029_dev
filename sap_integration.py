@@ -3797,7 +3797,8 @@ class SAPIntegration:
                 return []
             
             url = f"{self.base_url}/b1s/v1/Warehouses?$select=WarehouseCode,WarehouseName"
-            response = self.session.get(url, timeout=10)
+            headers = {"Prefer": "odata.maxpagesize=0"}
+            response = self.session.get(url, headers=headers,timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
