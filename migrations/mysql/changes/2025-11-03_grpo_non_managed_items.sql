@@ -10,9 +10,11 @@ CREATE TABLE IF NOT EXISTS grpo_non_managed_items (
     quantity DECIMAL(15,3) NOT NULL,
     base_line_number INT DEFAULT 0,
     expiry_date DATE NULL,
+    admin_date DATE NULL,
     grn_number VARCHAR(50) NULL,
     qty_per_pack DECIMAL(15,3) NULL,
     no_of_packs INT DEFAULT 1,
+    pack_number INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign key constraint
@@ -24,7 +26,8 @@ CREATE TABLE IF NOT EXISTS grpo_non_managed_items (
     -- Indexes for performance
     INDEX idx_grpo_item_id (grpo_item_id),
     INDEX idx_grn_number (grn_number),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_pack_number (pack_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add comment to table

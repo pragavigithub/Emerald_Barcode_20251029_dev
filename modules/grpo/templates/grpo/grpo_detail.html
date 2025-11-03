@@ -243,6 +243,8 @@
                                             {{ item.serial_numbers[0].qty_per_pack or '-' }}
                                         {% elif item.batch_numbers and item.batch_numbers|length > 0 %}
                                             {{ item.batch_numbers[0].qty_per_pack or '-' }}
+                                        {% elif item.non_managed_items and item.non_managed_items|length > 0 %}
+                                            {{ item.non_managed_items[0].qty_per_pack or '-' }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -252,6 +254,8 @@
                                             {{ item.serial_numbers[0].no_of_packs or '-' }}
                                         {% elif item.batch_numbers and item.batch_numbers|length > 0 %}
                                             {{ item.batch_numbers[0].no_of_packs or '-' }}
+                                        {% elif item.non_managed_items and item.non_managed_items|length > 0 %}
+                                            {{ item.non_managed_items[0].no_of_packs or '-' }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -304,6 +308,10 @@
                                         {% elif item.batch_numbers %}
                                         <button class="btn btn-sm btn-info" onclick="generateBatchQRLabels({{ item.id }}, '{{ item.item_code }}', '{{ item.item_name }}')">
                                             <i data-feather="printer"></i> Print Batch Labels
+                                        </button>
+                                        {% elif item.non_managed_items %}
+                                        <button class="btn btn-sm btn-warning" onclick="generateNonManagedQRLabels({{ item.id }}, '{{ item.item_code }}', '{{ item.item_name }}')">
+                                            <i data-feather="printer"></i> Print {{ item.non_managed_items|length }} QR Labels
                                         </button>
                                         {% else %}
                                         <button class="btn btn-sm btn-success" onclick="generateQRLabel('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.batch_number or '' }}', {{ grpo_doc.id }}, '{{ grpo_doc.po_number }}')">
@@ -449,6 +457,21 @@
                                 <div class="mb-3">
                                     <label for="standard_expiration_date" class="form-label">Expiration Date (Optional)</label>
                                     <input type="date" class="form-control" id="standard_expiration_date" name="standard_expiration_date">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="standard_number_of_bags" class="form-label">Number of Bags</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="standard_number_of_bags" name="number_of_bags"
+                                               placeholder="Enter number of bags for label printing" min="1" max="1000" value="1">
+                                        <button class="btn btn-success" type="button" onclick="generateStandardBarcodeLabels()" title="Generate barcode labels for bags">
+                                            <i data-feather="printer"></i> Generate Labels
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">Enter the number of bags to generate QR labels with PO, GRN date, expiry, item details (e.g., 5 will generate labels 1 of 5, 2 of 5, etc.)</small>
                                 </div>
                             </div>
                         </div>
@@ -2152,6 +2175,110 @@ function generateBatchQRLabels(itemId, itemCode, itemName) {
         .catch(error => {
             console.error('Error fetching batch numbers:', error);
             alert(`Error loading batch numbers: ${error.message}\n\nPlease check:\n1. Item has batch numbers saved\n2. You are logged in\n3. Check browser console for details`);
+        });
+}
+
+// Generate QR labels for non-managed items
+function generateNonManagedQRLabels(itemId, itemCode, itemName) {
+    fetch(`/grpo/items/${itemId}/non-managed-items`, {
+        credentials: 'same-origin'
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success || !data.non_managed_items || data.non_managed_items.length === 0) {
+                alert('No non-managed item records found for this item');
+                return;
+            }
+
+            const nonManagedItems = data.non_managed_items;
+            const grpoDetails = data.grpo_details;
+            const modal = new bootstrap.Modal(document.getElementById('serialQRLabelsModal'));
+            const container = document.getElementById('serialQRLabelsContainer');
+            container.innerHTML = '';
+
+            let totalLabelsGenerated = 0;
+
+            // Wait for QRCode library then generate codes
+            waitForQRCode((loaded) => {
+                nonManagedItems.forEach((nmItem, index) => {
+                    totalLabelsGenerated++;
+
+                    // Use proper GRN number from non-managed item record
+                    const grnNumber = nmItem.grn_number || grpoDetails.doc_number || 'N/A';
+                    const packNumber = nmItem.pack_number || index + 1;
+                    const totalPacks = nmItem.no_of_packs || data.count;
+                    const qtyPerPack = nmItem.qty_per_pack || nmItem.quantity;
+
+                    // Comprehensive QR data with all required fields in JSON format
+                    const qrDataObj = {
+                        'id': grnNumber,
+                        'po': grpoDetails.po_number,
+                        'item': itemCode,
+                        'desc': itemName,
+                        'qty': qtyPerPack,
+                        'pack': `${packNumber} of ${totalPacks}`,
+                        'grn_date': nmItem.admin_date || grpoDetails.grn_date,
+                        'exp_date': nmItem.expiry_date || 'N/A'
+                    };
+                    
+                    // Convert to JSON format for QR code
+                    const qrData = JSON.stringify(qrDataObj);
+
+                    const qrDiv = document.createElement('div');
+                    qrDiv.className = 'qr-label-item col-md-4 mb-3';
+
+                    qrDiv.innerHTML = `
+                        <div class="text-center p-3 border rounded">
+                            <h6 class="mb-2"><strong>${itemCode}</strong></h6>
+                            <p class="mb-1 small">${itemName}</p>
+                            <div class="qr-code-container mb-2"></div>
+                            <p class="mb-1 small"><strong>${grnNumber}</strong></p>
+                            <div class="small text-start">
+                                <strong>PO:</strong> ${grpoDetails.po_number}<br>
+                                <strong>Qty per Pack:</strong> ${qtyPerPack}<br>
+                                <strong>Pack:</strong> ${packNumber} of ${totalPacks}<br>
+                                <strong>GRN Date:</strong> ${nmItem.admin_date || grpoDetails.grn_date}<br>
+                                <strong>Exp Date:</strong> ${nmItem.expiry_date || 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(qrDiv);
+
+                    // Get QR container for code generation
+                    const qrContainer = qrDiv.querySelector('.qr-code-container');
+
+                    // Generate QR code using qrcodejs
+                    if (loaded && typeof QRCode !== 'undefined') {
+                        try {
+                            new QRCode(qrContainer, {
+                                text: qrData,
+                                width: 150,
+                                height: 150,
+                                colorDark: '#000000',
+                                colorLight: '#ffffff',
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        } catch (error) {
+                            console.error('QR generation error:', error);
+                            qrContainer.innerHTML = `<p class="text-danger">Error generating QR</p>`;
+                        }
+                    } else {
+                        qrContainer.innerHTML = `<p class="text-danger">QR library not loaded</p>`;
+                    }
+                });
+
+                console.log(`Generated ${totalLabelsGenerated} QR code labels for non-managed items`);
+                modal.show();
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching non-managed items:', error);
+            alert(`Error loading non-managed items: ${error.message}\n\nPlease check:\n1. Item has non-managed item records saved\n2. You are logged in\n3. Check browser console for details`);
         });
 }
 

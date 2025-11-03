@@ -137,9 +137,11 @@ class GRPONonManagedItem(db.Model):
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     base_line_number = db.Column(db.Integer, default=0)
     expiry_date = db.Column(db.Date)
+    admin_date = db.Column(db.Date)
     grn_number = db.Column(db.String(50))
     qty_per_pack = db.Column(db.Numeric(15, 3))
     no_of_packs = db.Column(db.Integer, default=1)
+    pack_number = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships

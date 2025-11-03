@@ -503,9 +503,11 @@ def add_grpo_item(grpo_id):
                         quantity=qty_per_pack,
                         base_line_number=idx,
                         expiry_date=expiry_date_obj,
+                        admin_date=datetime.now().date(),
                         grn_number=grn_number,
                         qty_per_pack=qty_per_pack,
-                        no_of_packs=no_of_packs
+                        no_of_packs=no_of_packs,
+                        pack_number=idx + 1
                     )
                     db.session.add(non_managed_item)
                     logging.info(f"✅ Created non-managed item pack {idx + 1} of {no_of_packs} with GRN {grn_number} (Qty per pack: {qty_per_pack})")
@@ -664,6 +666,48 @@ def get_batch_numbers(item_id):
         
     except Exception as e:
         logging.error(f"Error fetching batch numbers: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@grpo_bp.route('/items/<int:item_id>/non-managed-items', methods=['GET'])
+@login_required
+def get_non_managed_items(item_id):
+    """Get all non-managed item records for a GRPO item with GRPO document details"""
+    try:
+        item = GRPOItem.query.get_or_404(item_id)
+        grpo = item.grpo_document
+        
+        if grpo.user_id != current_user.id and current_user.role not in ['admin', 'manager', 'qc']:
+            return jsonify({'success': False, 'error': 'Access denied'}), 403
+        
+        non_managed_items = []
+        for nm_item in item.non_managed_items:
+            non_managed_items.append({
+                'id': nm_item.id,
+                'grn_number': nm_item.grn_number,
+                'quantity': float(nm_item.quantity),
+                'expiry_date': nm_item.expiry_date.strftime('%Y-%m-%d') if nm_item.expiry_date else None,
+                'qty_per_pack': float(nm_item.qty_per_pack) if nm_item.qty_per_pack else float(nm_item.quantity),
+                'no_of_packs': nm_item.no_of_packs if nm_item.no_of_packs else 1,
+                'pack_number': nm_item.pack_number,
+                'admin_date': nm_item.admin_date.strftime('%Y-%m-%d') if nm_item.admin_date else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'non_managed_items': non_managed_items,
+            'count': len(non_managed_items),
+            'grpo_details': {
+                'po_number': grpo.po_number,
+                'grn_date': grpo.created_at.strftime('%Y-%m-%d'),
+                'doc_number': grpo.doc_number or f'GRN/{grpo.id}',
+                'item_code': item.item_code,
+                'item_name': item.item_name,
+                'received_quantity': float(item.quantity)
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching non-managed items: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_barcode(data):
