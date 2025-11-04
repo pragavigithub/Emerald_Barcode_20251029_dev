@@ -305,7 +305,9 @@ def add_grpo_item(grpo_id):
             number_of_bags = int(number_of_bags_str) if number_of_bags_str else 1
             if number_of_bags < 1:
                 number_of_bags = 1
-        except (ValueError, TypeError, AttributeError):
+            logging.info(f"📦 Number of bags parsed: {number_of_bags} (from form value: '{number_of_bags_str}')")
+        except (ValueError, TypeError, AttributeError) as e:
+            logging.warning(f"⚠️ Error parsing number_of_bags, defaulting to 1: {str(e)}")
             number_of_bags = 1
         
         if not all([item_code, item_name, quantity > 0]):
@@ -456,6 +458,8 @@ def add_grpo_item(grpo_id):
                     qty_per_pack = batch_qty / number_of_bags if number_of_bags > 0 else batch_qty
                     no_of_packs = number_of_bags
                     
+                    logging.info(f"📦 Batch {batch_data.get('batch_number')}: Quantity={batch_qty}, Number of bags={number_of_bags}, Qty per pack={qty_per_pack}, No of packs={no_of_packs}")
+                    
                     # Generate unique GRN number for this batch
                     grn_number = generate_unique_grn_number(grpo, idx + 1)
                     
@@ -472,7 +476,7 @@ def add_grpo_item(grpo_id):
                         no_of_packs=no_of_packs
                     )
                     db.session.add(batch)
-                    logging.info(f"✅ Created batch {batch_data.get('batch_number')} with GRN {grn_number} (Qty per pack: {qty_per_pack}, No of packs: {no_of_packs})")
+                    logging.info(f"✅ Created batch {batch_data.get('batch_number')} with GRN {grn_number} (Qty={batch_qty}, Qty per pack={qty_per_pack}, No of packs={no_of_packs})")
                 
                 logging.info(f"✅ Added {len(batch_numbers)} batch numbers for item {item_code}")
                 
@@ -1119,24 +1123,53 @@ def generate_barcode_labels_api():
         labels = []
         
         if label_type == 'serial':
-            # Generate labels for serial-managed items
-            serial_numbers = item.serial_numbers
+            # Generate labels for serial-managed items based on NUMBER OF BAGS
+            # Explicitly order serials by ID to ensure consistent, intuitive ranges
+            serial_numbers = sorted(item.serial_numbers, key=lambda s: s.id)
             total_serials = len(serial_numbers)
             
-            for idx, serial in enumerate(serial_numbers, start=1):
-                # Use the unique GRN number for this serial
-                serial_grn = serial.grn_number or doc_number
+            if total_serials == 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'No serial numbers found for this item'
+                }), 400
+            
+            # Get number of bags from the first serial (all serials have same no_of_packs)
+            num_bags = serial_numbers[0].no_of_packs if serial_numbers[0].no_of_packs else 1
+            serials_per_bag = int(total_serials / num_bags) if num_bags > 0 else total_serials
+            
+            # Group serials into bags and create one label per bag
+            for bag_idx in range(1, num_bags + 1):
+                start_idx = (bag_idx - 1) * serials_per_bag
+                end_idx = start_idx + serials_per_bag
+                
+                # Handle last bag - may have more serials if division wasn't even
+                if bag_idx == num_bags:
+                    end_idx = total_serials
+                
+                bag_serials = serial_numbers[start_idx:end_idx]
+                
+                # Collect serial numbers for this bag
+                serial_list = [s.internal_serial_number for s in bag_serials]
+                serial_range = f"{serial_list[0]} to {serial_list[-1]}" if len(serial_list) > 1 else serial_list[0]
+                
+                # Use GRN from first serial in bag
+                first_serial = bag_serials[0]
+                bag_grn = first_serial.grn_number or doc_number
+                
+                # Calculate quantity for this bag
+                bag_quantity = len(bag_serials)
                 
                 qr_data = {
                     'PO': po_number,
-                    'SerialNumber': serial.internal_serial_number,
-                    'Qty': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
-                    'Pack': f"{idx} of {serial.no_of_packs or total_serials}",
+                    'SerialRange': serial_range,
+                    'Qty': bag_quantity,
+                    'Pack': f"{bag_idx} of {num_bags}",
                     'GRN Date': grn_date,
-                    'Exp Date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
+                    'Exp Date': first_serial.expiry_date.strftime('%Y-%m-%d') if first_serial.expiry_date else 'N/A',
                     'ItemCode': item.item_code,
                     'ItemDesc': item.item_name or '',
-                    'id': serial_grn
+                    'id': f"{bag_grn}-BAG{bag_idx}"
                 }
                 
                 # Convert to QR code friendly format
@@ -1144,20 +1177,21 @@ def generate_barcode_labels_api():
                 qr_code_image = generate_barcode(qr_text)
                 
                 label = {
-                    'sequence': idx,
-                    'total': serial.no_of_packs or total_serials,
-                    'pack_text': f"{idx} of {serial.no_of_packs or total_serials}",
+                    'sequence': bag_idx,
+                    'total': num_bags,
+                    'pack_text': f"{bag_idx} of {num_bags}",
                     'po_number': po_number,
-                    'serial_number': serial.internal_serial_number,
-                    'quantity': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
-                    'qty_per_pack': float(serial.qty_per_pack) if serial.qty_per_pack else 1,
-                    'no_of_packs': serial.no_of_packs or total_serials,
+                    'serial_number': serial_range,
+                    'serial_list': ', '.join(serial_list),
+                    'quantity': bag_quantity,
+                    'qty_per_pack': bag_quantity,
+                    'no_of_packs': num_bags,
                     'grn_date': grn_date,
-                    'grn_number': serial_grn,
-                    'expiration_date': serial.expiry_date.strftime('%Y-%m-%d') if serial.expiry_date else 'N/A',
+                    'grn_number': f"{bag_grn}-BAG{bag_idx}",
+                    'expiration_date': first_serial.expiry_date.strftime('%Y-%m-%d') if first_serial.expiry_date else 'N/A',
                     'item_code': item.item_code,
                     'item_name': item.item_name or '',
-                    'doc_number': serial_grn,
+                    'doc_number': f"{bag_grn}-BAG{bag_idx}",
                     'qr_code_image': qr_code_image,
                     'qr_data': qr_data
                 }
