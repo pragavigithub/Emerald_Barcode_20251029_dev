@@ -139,8 +139,8 @@ class GRPONonManagedItem(db.Model):
     expiry_date = db.Column(db.String(50))
     admin_date = db.Column(db.String(50))
     grn_number = db.Column(db.String(50))
-    qty_per_pack = db.Column(db.Numeric(15, 3))
-    no_of_packs = db.Column(db.Integer, default=1)
+    qty_per_pack = db.Column(db.Integer)
+    no_of_packs = db.Column(db.Integer)
     pack_number = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
