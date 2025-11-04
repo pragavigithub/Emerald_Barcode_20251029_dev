@@ -2915,7 +2915,7 @@ class SAPIntegration:
                 "BaseEntry": po_doc_entry,
                 "BaseLine": po_line_num,
                 "ItemCode": item.item_code,
-                "Quantity": item.received_quantity,
+                "Quantity": float(item.received_quantity),
                 "WarehouseCode": warehouse_code
             }
 
@@ -2999,7 +2999,7 @@ class SAPIntegration:
                     "BatchNumber":
                     item.batch_number,
                     "Quantity":
-                    item.received_quantity,
+                    float(item.received_quantity),
                     "BaseLineNumber":
                     line_number,
                     "ManufacturerSerialNumber":
