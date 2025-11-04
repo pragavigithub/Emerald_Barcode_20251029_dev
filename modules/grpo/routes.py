@@ -487,15 +487,34 @@ def add_grpo_item(grpo_id):
         
         # **NON-MANAGED ITEM HANDLING** (when both BatchNum='N' and SerialNum='N')
         if not is_batch_managed and not is_serial_managed:
+            has_serial_data = False
+            has_batch_data = False
+            
+            if serial_numbers_json:
+                try:
+                    parsed_serials = json.loads(serial_numbers_json)
+                    has_serial_data = isinstance(parsed_serials, list) and len(parsed_serials) > 0
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            if batch_numbers_json:
+                try:
+                    parsed_batches = json.loads(batch_numbers_json)
+                    has_batch_data = isinstance(parsed_batches, list) and len(parsed_batches) > 0
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            if has_serial_data or has_batch_data:
+                logging.error(f"❌ CRITICAL: Attempted to create non-managed items for {item_code} but serial/batch data was provided! is_batch_managed={is_batch_managed}, is_serial_managed={is_serial_managed}, has_serial_data={has_serial_data}, has_batch_data={has_batch_data}")
+                flash(f'Data inconsistency: Item {item_code} has batch/serial data but SAP validation indicates it is not managed. Please check SAP item master data.', 'error')
+                db.session.rollback()
+                return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+            
             try:
-                # For non-managed items, create records based on number_of_bags
-                # Each bag will get a unique GRN number and QR code
                 qty_per_pack = quantity / number_of_bags if number_of_bags > 0 else quantity
                 no_of_packs = number_of_bags
                 
-                # Generate a non-managed item record for each bag
                 for idx in range(number_of_bags):
-                    # Generate unique GRN number for this pack/bag
                     grn_number = generate_unique_grn_number(grpo, idx + 1)
                     
                     non_managed_item = GRPONonManagedItem(
@@ -518,6 +537,16 @@ def add_grpo_item(grpo_id):
                 flash(f'Error processing non-managed item: {str(e)}', 'error')
                 db.session.rollback()
                 return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+        elif is_batch_managed and not batch_numbers_json:
+            logging.error(f"❌ Batch-managed item {item_code} added without batch data")
+            flash(f'Item {item_code} is batch managed but no batch numbers were provided', 'error')
+            db.session.rollback()
+            return redirect(url_for('grpo.detail', grpo_id=grpo_id))
+        elif is_serial_managed and not serial_numbers_json:
+            logging.error(f"❌ Serial-managed item {item_code} added without serial data")
+            flash(f'Item {item_code} is serial managed but no serial numbers were provided', 'error')
+            db.session.rollback()
+            return redirect(url_for('grpo.detail', grpo_id=grpo_id))
         
         db.session.commit()
         
@@ -1119,47 +1148,50 @@ def generate_barcode_labels_api():
         elif label_type == 'batch':
             # Generate labels for batch-managed items
             batch_numbers = item.batch_numbers
-            total_batches = len(batch_numbers)
+            label_counter = 1
             
-            for idx, batch in enumerate(batch_numbers, start=1):
-                # Use the unique GRN number for this batch
-                batch_grn = batch.grn_number or doc_number
+            for batch in batch_numbers:
+                num_packs = batch.no_of_packs or 1
                 
-                qr_data = {
-                    'PO': po_number,
-                    'BatchNumber': batch.batch_number,
-                    'Qty': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
-                    'Pack': f"{idx} of {batch.no_of_packs or total_batches}",
-                    'GRN Date': grn_date,
-                    'Exp Date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
-                    'ItemCode': item.item_code,
-                    'ItemDesc': item.item_name or '',
-                    'id': batch_grn
-                }
-                
-                # Convert to QR code friendly format
-                qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
-                qr_code_image = generate_barcode(qr_text)
-                
-                label = {
-                    'sequence': idx,
-                    'total': batch.no_of_packs or total_batches,
-                    'pack_text': f"{idx} of {batch.no_of_packs or total_batches}",
-                    'po_number': po_number,
-                    'batch_number': batch.batch_number,
-                    'quantity': float(batch.quantity),
-                    'qty_per_pack': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
-                    'no_of_packs': batch.no_of_packs or total_batches,
-                    'grn_date': grn_date,
-                    'grn_number': batch_grn,
-                    'expiration_date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
-                    'item_code': item.item_code,
-                    'item_name': item.item_name or '',
-                    'doc_number': batch_grn,
-                    'qr_code_image': qr_code_image,
-                    'qr_data': qr_data
-                }
-                labels.append(label)
+                for pack_idx in range(1, num_packs + 1):
+                    batch_grn = batch.grn_number or doc_number
+                    
+                    qr_data = {
+                        'PO': po_number,
+                        'BatchNumber': batch.batch_number,
+                        'Qty': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
+                        'Pack': f"{pack_idx} of {num_packs}",
+                        'GRN Date': grn_date,
+                        'Exp Date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
+                        'ItemCode': item.item_code,
+                        'ItemDesc': item.item_name or '',
+                        'id': f"{batch_grn}-{pack_idx}"
+                    }
+                    
+                    # Convert to QR code friendly format
+                    qr_text = '\n'.join([f"{k}: {v}" for k, v in qr_data.items()])
+                    qr_code_image = generate_barcode(qr_text)
+                    
+                    label = {
+                        'sequence': label_counter,
+                        'total': num_packs,
+                        'pack_text': f"{pack_idx} of {num_packs}",
+                        'po_number': po_number,
+                        'batch_number': batch.batch_number,
+                        'quantity': float(batch.quantity),
+                        'qty_per_pack': float(batch.qty_per_pack) if batch.qty_per_pack else float(batch.quantity),
+                        'no_of_packs': num_packs,
+                        'grn_date': grn_date,
+                        'grn_number': f"{batch_grn}-{pack_idx}",
+                        'expiration_date': batch.expiry_date.strftime('%Y-%m-%d') if batch.expiry_date else 'N/A',
+                        'item_code': item.item_code,
+                        'item_name': item.item_name or '',
+                        'doc_number': f"{batch_grn}-{pack_idx}",
+                        'qr_code_image': qr_code_image,
+                        'qr_data': qr_data
+                    }
+                    labels.append(label)
+                    label_counter += 1
         
         else:  # Regular non-serial/non-batch items (non-managed items)
             # Check if there are non_managed_items records (number of bags > 1)
