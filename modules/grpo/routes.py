@@ -728,14 +728,14 @@ def get_non_managed_items(item_id):
             non_managed_items.append({
                 'id': nm_item.id,
                 'grn_number': nm_item.grn_number,
-                'quantity': float(nm_item.quantity),
-                'expiry_date': nm_item.expiry_date.strftime('%Y-%m-%d') if nm_item.expiry_date else None,
+                'quantity': nm_item.quantity,
+                'expiry_date': nm_item.expiry_date ,
                 'qty_per_pack': float(nm_item.qty_per_pack) if nm_item.qty_per_pack else float(nm_item.quantity),
                 'no_of_packs': nm_item.no_of_packs if nm_item.no_of_packs else 1,
                 'pack_number': nm_item.pack_number,
-                'admin_date': nm_item.admin_date.strftime('%Y-%m-%d') if nm_item.admin_date else None
+                'admin_date': nm_item.admin_date
             })
-        
+        #nm_item.admin_date.strftime('%Y-%m-%d') if
         logging.info(f"✅ Successfully returning {len(non_managed_items)} non-managed items")
         return jsonify({
             'success': True,

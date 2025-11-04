@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS grpo_non_managed_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     grpo_item_id INT NOT NULL,
-    quantity DECIMAL(15,3) NOT NULL,
+    quantity  INT NOT NULL,
     base_line_number INT DEFAULT 0,
     expiry_date DATE NULL,
     admin_date DATE NULL,

@@ -97,7 +97,7 @@ class GRPOSerialNumber(db.Model):
     expiry_date = db.Column(db.Date)
     manufacture_date = db.Column(db.Date)
     notes = db.Column(db.Text)
-    quantity = db.Column(db.Numeric(15, 3), default=1.0)
+    quantity = db.Column(db.Integer, default=1.0)
     base_line_number = db.Column(db.Integer, default=0)
     grn_number = db.Column(db.String(50))
     qty_per_pack = db.Column(db.Numeric(15, 3), default=1.0)
