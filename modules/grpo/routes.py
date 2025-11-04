@@ -702,14 +702,29 @@ def get_batch_numbers(item_id):
 def get_non_managed_items(item_id):
     """Get all non-managed item records for a GRPO item with GRPO document details"""
     try:
+        logging.info(f"📦 Fetching non-managed items for item_id={item_id}")
         item = GRPOItem.query.get_or_404(item_id)
         grpo = item.grpo_document
         
+        logging.info(f"📦 Item found: {item.item_code}, GRPO ID: {grpo.id}, User ID: {grpo.user_id}")
+        
         if grpo.user_id != current_user.id and current_user.role not in ['admin', 'manager', 'qc']:
+            logging.warning(f"⚠️ Access denied for user {current_user.id} to GRPO {grpo.id}")
             return jsonify({'success': False, 'error': 'Access denied'}), 403
         
+        non_managed_items_query = item.non_managed_items
+        logging.info(f"📦 Found {len(non_managed_items_query) if non_managed_items_query else 0} non-managed item records")
+        
+        if not non_managed_items_query or len(non_managed_items_query) == 0:
+            logging.warning(f"⚠️ No non-managed item records found for item_id={item_id}. Item might be serial/batch managed or records not created during item addition.")
+            return jsonify({
+                'success': False,
+                'error': 'No non-managed item records found. This item may be serial or batch managed, or the item was not properly saved. Please check the item type and try adding it again.',
+                'hint': 'Check that this is a non-serial, non-batch managed item'
+            }), 404
+        
         non_managed_items = []
-        for nm_item in item.non_managed_items:
+        for nm_item in non_managed_items_query:
             non_managed_items.append({
                 'id': nm_item.id,
                 'grn_number': nm_item.grn_number,
@@ -721,6 +736,7 @@ def get_non_managed_items(item_id):
                 'admin_date': nm_item.admin_date.strftime('%Y-%m-%d') if nm_item.admin_date else None
             })
         
+        logging.info(f"✅ Successfully returning {len(non_managed_items)} non-managed items")
         return jsonify({
             'success': True,
             'non_managed_items': non_managed_items,
@@ -736,7 +752,9 @@ def get_non_managed_items(item_id):
         })
         
     except Exception as e:
-        logging.error(f"Error fetching non-managed items: {str(e)}")
+        import traceback
+        logging.error(f"❌ Error fetching non-managed items for item_id={item_id}: {str(e)}")
+        logging.error(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_barcode(data):
