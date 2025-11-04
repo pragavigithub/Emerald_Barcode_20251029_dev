@@ -134,7 +134,7 @@ class GRPONonManagedItem(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     grpo_item_id = db.Column(db.Integer, db.ForeignKey('grpo_items.id'), nullable=False)
-    quantity = db.Column(db.Numeric(15, 3), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
     base_line_number = db.Column(db.Integer, default=0)
     expiry_date = db.Column(db.Date)
     admin_date = db.Column(db.Date)
